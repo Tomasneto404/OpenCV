@@ -1,0 +1,302 @@
+/**
+ * Global theme + utility classes.
+ *
+ * Two palettes meet here:
+ *  - The WebUI palette (CVeaver — warm browns + leaf accent), declared as
+ *    Tailwind v4 CSS custom properties under @theme. Anything UI-facing
+ *    (buttons, fields, cards) consumes these.
+ *  - The CV accentColor stored in the user's CV data lives separately and only
+ *    affects the rendered CV preview/PDF — see PersonalSection swatches.
+ *
+ * Light / dark:
+ *  - Tokens are split into "static" (brand colours) under @theme and
+ *    "themed" surface/ink tokens redefined under :root + [data-theme="dark"].
+ *  - `data-theme` is set on <html> by an inline script in index.html (avoids
+ *    FOUC) and toggled by the ThemeToggle component.
+ *  - The choice is persisted in localStorage('cveaver:theme'). When unset we
+ *    follow `prefers-color-scheme`.
+ *
+ * Why two palettes? The WebUI is themable; the CV must stay print-friendly
+ * (white background, sober accents). Mixing them confused users in earlier
+ * iterations.
+ */
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  /* Fonts ----------------------------------------------------------------- */
+  --font-sans:  "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  --font-mono:  "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Brand (primary) — beaver wood-brown, used for primary CTAs + brand mark */
+  --color-brand-50:  #faf3e8;
+  --color-brand-100: #f0e1c6;
+  --color-brand-200: #e3c89c;
+  --color-brand-300: #d3a96d;
+  --color-brand-400: #b9874a;
+  --color-brand-500: #9c6a33;
+  --color-brand-600: #7e5326;
+  --color-brand-700: #5f3e1c;
+  --color-brand-800: #432c14;
+  --color-brand-900: #2c1c0b;
+
+  /* Accent (secondary) — leaf green, paired with brand in gradients */
+  --color-accent-300: #9dc995;
+  --color-accent-400: #6ea867;
+  --color-accent-500: #4d8a45;
+  --color-accent-600: #386b32;
+  --color-accent-700: #275024;
+}
+
+/* ── Themed tokens (light is default; dark overrides) ─────────────────── */
+:root {
+  --color-surface-0: #faf6ef;   /* page bg (parchment) */
+  --color-surface-1: #ffffff;   /* raised cards */
+  --color-surface-2: #f3e9d4;   /* nav / sticky bars */
+
+  --color-ink:        #2c1c0b;
+  --color-ink-muted:  rgba(44, 28, 11, 0.62);
+  --color-ink-faint:  rgba(44, 28, 11, 0.40);
+
+  --color-border:        rgba(44, 28, 11, 0.10);
+  --color-border-strong: rgba(44, 28, 11, 0.18);
+
+  --color-glass-bg:     rgba(255, 255, 255, 0.55);
+  --color-glass-border: rgba(44, 28, 11, 0.10);
+  --color-field-bg:     rgba(255, 255, 255, 0.75);
+  --color-field-hover:  rgba(255, 255, 255, 1);
+
+  --shadow-card: 0 14px 40px -18px rgba(67, 44, 20, 0.25);
+
+  --ambient-1: rgba(156, 106, 51, 0.22);  /* brand glow */
+  --ambient-2: rgba(77, 138, 69, 0.16);   /* leaf glow */
+  --ambient-3: rgba(211, 169, 109, 0.10);
+}
+
+[data-theme="dark"] {
+  --color-surface-0: #161009;   /* deep coffee */
+  --color-surface-1: #1f1610;   /* raised */
+  --color-surface-2: #2a1f15;   /* sticky bars */
+
+  --color-ink:        #f4ead7;
+  --color-ink-muted:  rgba(244, 234, 215, 0.66);
+  --color-ink-faint:  rgba(244, 234, 215, 0.40);
+
+  --color-border:        rgba(244, 234, 215, 0.08);
+  --color-border-strong: rgba(244, 234, 215, 0.16);
+
+  --color-glass-bg:     rgba(255, 255, 255, 0.04);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+  --color-field-bg:     rgba(255, 255, 255, 0.04);
+  --color-field-hover:  rgba(255, 255, 255, 0.06);
+
+  --shadow-card: 0 20px 50px -22px rgba(0, 0, 0, 0.6);
+
+  --ambient-1: rgba(156, 106, 51, 0.30);
+  --ambient-2: rgba(77, 138, 69, 0.22);
+  --ambient-3: rgba(185, 135, 74, 0.08);
+}
+
+html, body, #root { height: 100%; }
+
+body {
+  font-family: var(--font-sans);
+  /* One large, low-contrast field gradient pulls everything onto a single
+     warm wash. The two smaller blobs are layered on top, but blurred and
+     overlapping enough that they don't read as "3 separate spots" anymore. */
+  background:
+    radial-gradient(circle at 25% 18%, var(--ambient-1), transparent 55%),
+    radial-gradient(circle at 78% 72%, var(--ambient-2), transparent 60%),
+    linear-gradient(180deg, var(--ambient-3) 0%, transparent 35%, transparent 70%, var(--ambient-1) 120%),
+    var(--color-surface-0);
+  background-attachment: fixed;
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .2s ease, color .2s ease;
+}
+
+/* Brand mark — the PNG logo. In dark mode we invert the line-art for contrast. */
+.brand-mark { display: inline-block; }
+[data-theme="dark"] .brand-mark { filter: invert(1) brightness(0.96); }
+
+/* Glass card — used in landing/pricing/template tiles */
+.glass {
+  background: var(--color-glass-bg);
+  border: 1px solid var(--color-glass-border);
+  backdrop-filter: blur(12px);
+}
+
+/* Primary CTA — gradient that ties brand+accent together */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, var(--color-brand-500) 0%, var(--color-accent-600) 100%);
+  box-shadow:
+    0 10px 30px -10px rgba(156, 106, 51, 0.55),
+    0 6px 20px -6px rgba(77, 138, 69, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+}
+.btn-primary:hover  { transform: translateY(-1px); filter: brightness(1.07); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; filter: none; }
+.btn-primary:focus-visible { outline: 2px solid var(--color-brand-300); outline-offset: 2px; }
+
+/* Secondary / neutral button */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  background: var(--color-glass-bg);
+  border: 1px solid var(--color-border);
+  transition: background .15s ease, border-color .15s ease;
+}
+.btn-ghost:hover  { background: var(--color-field-hover); border-color: var(--color-border-strong); }
+.btn-ghost:focus-visible { outline: 2px solid var(--color-brand-300); outline-offset: 2px; }
+.btn-ghost:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Form field */
+.field {
+  width: 100%;
+  background: var(--color-field-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-ink);
+  border-radius: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.9rem;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.field:focus {
+  outline: none;
+  border-color: var(--color-brand-400);
+  background: var(--color-field-hover);
+  box-shadow: 0 0 0 3px rgba(156, 106, 51, 0.18);
+}
+.field::placeholder { color: var(--color-ink-faint); }
+textarea.field { resize: vertical; min-height: 5rem; }
+
+.label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-muted);
+  margin-bottom: 0.35rem;
+  display: block;
+  font-weight: 500;
+}
+
+/* CV preview surface — always white regardless of WebUI theme. */
+.cv-surface {
+  color: #111827;
+  background: white;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* ── Light-mode bridges ────────────────────────────────────────────────
+   Most components were written with hardcoded white-on-dark utilities
+   (text-white/X, bg-white/X, border-white/X). These rules remap them so
+   they stay legible on parchment in light mode, without touching every
+   component. Tailwind generates the matching classes; we just adjust
+   the colour value via `[data-theme="light"]`.
+
+   The Builder editor is intentionally dark in both modes (productivity
+   surface — see Sessão 20 notes); its sticky nav uses CSS variables so
+   it themes correctly. */
+/* Light-mode browns need a stronger opacity than the equivalent white/X on
+   dark — otherwise icons/labels feel washed out on parchment. The values
+   below were tuned by eye against the Builder's section chips + icon bar. */
+[data-theme="light"] .text-white\/25 { color: rgba(44, 28, 11, 0.35); }
+[data-theme="light"] .text-white\/30 { color: rgba(44, 28, 11, 0.42); }
+[data-theme="light"] .text-white\/35 { color: rgba(44, 28, 11, 0.48); }
+[data-theme="light"] .text-white\/40 { color: rgba(44, 28, 11, 0.55); }
+[data-theme="light"] .text-white\/45 { color: rgba(44, 28, 11, 0.60); }
+[data-theme="light"] .text-white\/50 { color: rgba(44, 28, 11, 0.65); }
+[data-theme="light"] .text-white\/55 { color: rgba(44, 28, 11, 0.70); }
+[data-theme="light"] .text-white\/60 { color: rgba(44, 28, 11, 0.74); }
+[data-theme="light"] .text-white\/65 { color: rgba(44, 28, 11, 0.78); }
+[data-theme="light"] .text-white\/70 { color: rgba(44, 28, 11, 0.80); }
+[data-theme="light"] .text-white\/72 { color: rgba(44, 28, 11, 0.82); }
+[data-theme="light"] .text-white\/75 { color: rgba(44, 28, 11, 0.85); }
+[data-theme="light"] .text-white\/80 { color: rgba(44, 28, 11, 0.88); }
+[data-theme="light"] .text-white\/85 { color: rgba(44, 28, 11, 0.92); }
+[data-theme="light"] .text-white\/90 { color: rgba(44, 28, 11, 0.95); }
+[data-theme="light"] .text-white      { color: var(--color-ink); }
+
+[data-theme="light"] .border-white\/5  { border-color: rgba(44, 28, 11, 0.08); }
+[data-theme="light"] .border-white\/8  { border-color: rgba(44, 28, 11, 0.10); }
+[data-theme="light"] .border-white\/10 { border-color: rgba(44, 28, 11, 0.12); }
+[data-theme="light"] .border-white\/15 { border-color: rgba(44, 28, 11, 0.16); }
+[data-theme="light"] .border-white\/18 { border-color: rgba(44, 28, 11, 0.18); }
+[data-theme="light"] .border-white\/20 { border-color: rgba(44, 28, 11, 0.20); }
+[data-theme="light"] .border-white\/30 { border-color: rgba(44, 28, 11, 0.28); }
+
+[data-theme="light"] .bg-white\/\[0\.02\] { background-color: rgba(44, 28, 11, 0.04); }
+[data-theme="light"] .bg-white\/\[0\.03\] { background-color: rgba(44, 28, 11, 0.05); }
+[data-theme="light"] .bg-white\/\[0\.04\] { background-color: rgba(44, 28, 11, 0.06); }
+[data-theme="light"] .bg-white\/\[0\.05\] { background-color: rgba(44, 28, 11, 0.07); }
+[data-theme="light"] .bg-white\/\[0\.06\] { background-color: rgba(44, 28, 11, 0.08); }
+[data-theme="light"] .bg-white\/\[0\.07\] { background-color: rgba(44, 28, 11, 0.10); }
+[data-theme="light"] .bg-white\/\[0\.08\] { background-color: rgba(44, 28, 11, 0.12); }
+
+[data-theme="light"] .hover\:bg-white\/5:hover     { background-color: rgba(44, 28, 11, 0.06); }
+[data-theme="light"] .hover\:bg-white\/8:hover     { background-color: rgba(44, 28, 11, 0.08); }
+[data-theme="light"] .hover\:bg-white\/10:hover    { background-color: rgba(44, 28, 11, 0.10); }
+
+[data-theme="light"] .hover\:border-white\/15:hover { border-color: rgba(44, 28, 11, 0.16); }
+[data-theme="light"] .hover\:border-white\/20:hover { border-color: rgba(44, 28, 11, 0.20); }
+[data-theme="light"] .hover\:border-white\/30:hover { border-color: rgba(44, 28, 11, 0.28); }
+
+[data-theme="light"] .hover\:text-white\/85:hover  { color: rgba(44, 28, 11, 0.92); }
+[data-theme="light"] .hover\:text-white:hover       { color: var(--color-ink); }
+
+/* Black overlays used by the Builder for the preview pane and mobile dialogs.
+   In light mode we want the preview area to read as a soft tan card, not
+   a translucent black smudge. Full-screen overlays (≥/55) stay darker so
+   the modal still pops against the page. */
+[data-theme="light"] .bg-black\/20 { background-color: rgba(44, 28, 11, 0.05); }
+[data-theme="light"] .bg-black\/30 { background-color: rgba(44, 28, 11, 0.07); }
+[data-theme="light"] .bg-black\/40 { background-color: rgba(44, 28, 11, 0.40); }
+[data-theme="light"] .bg-black\/55 { background-color: rgba(255, 250, 240, 0.78); }
+[data-theme="light"] .bg-black\/55 > * { color: var(--color-ink) !important; border-color: rgba(44, 28, 11, 0.30) !important; }
+[data-theme="light"] .bg-black\/80 { background-color: rgba(44, 28, 11, 0.78); }
+
+/* Warning bar (Builder fill-name banner) — amber on amber is unreadable in
+   light. Push text to a deep amber and bump the border. */
+[data-theme="light"] .text-amber-200\/90 { color: rgba(120, 53, 15, 0.95); }
+[data-theme="light"] .bg-amber-500\/10   { background-color: rgba(245, 158, 11, 0.16); }
+[data-theme="light"] .border-amber-400\/15 { border-color: rgba(217, 119, 6, 0.45); }
+[data-theme="light"] .text-amber-300\/85  { color: rgba(146, 64, 14, 0.95); }
+[data-theme="light"] .text-amber-100\/85  { color: rgba(120, 53, 15, 0.95); }
+
+/* Section completion badge — keep emerald readable on parchment. */
+[data-theme="light"] .bg-emerald-400\/15 { background-color: rgba(16, 185, 129, 0.18); }
+[data-theme="light"] .text-emerald-300   { color: rgba(6, 95, 70, 0.95); }
+[data-theme="light"] .text-emerald-200   { color: rgba(6, 78, 59, 0.95); }
+[data-theme="light"] .border-emerald-400\/30 { border-color: rgba(5, 150, 105, 0.45); }
+[data-theme="light"] .bg-emerald-400\/10  { background-color: rgba(16, 185, 129, 0.12); }
+[data-theme="light"] .bg-emerald-500\/10  { background-color: rgba(16, 185, 129, 0.12); }
+[data-theme="light"] .border-emerald-400\/25 { border-color: rgba(5, 150, 105, 0.40); }
+[data-theme="light"] .bg-emerald-400\/\[0\.06\] { background-color: rgba(16, 185, 129, 0.10); }
+[data-theme="light"] .bg-emerald-500\/\[0\.07\] { background-color: rgba(16, 185, 129, 0.10); }
+
+/* Red — used by error states and tampered-signature notices. */
+[data-theme="light"] .text-red-300       { color: rgba(153, 27, 27, 0.95); }
+[data-theme="light"] .text-red-200       { color: rgba(127, 29, 29, 0.95); }
+[data-theme="light"] .bg-red-500\/10     { background-color: rgba(220, 38, 38, 0.10); }
+[data-theme="light"] .border-red-400\/30 { border-color: rgba(220, 38, 38, 0.40); }
+

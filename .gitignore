@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+.env.local
+data/
+keys/
+.DS_Store
+*.log
+.vite

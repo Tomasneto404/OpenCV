@@ -1,0 +1,16 @@
+{
+  "name": "cveaver",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pay-per-use CV generator — €1 to download, €0.50 to update. No login.",
+  "scripts": {
+    "dev": "concurrently -k -n server,client -c green,cyan \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "npm --prefix server run dev",
+    "build": "npm --prefix client run build",
+    "install:all": "npm install && npm --prefix client install && npm --prefix server install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

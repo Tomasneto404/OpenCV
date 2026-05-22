@@ -213,7 +213,7 @@ function drawClassicChrome(page: PDFPage, cert: CertificateItem, current: number
   page.drawLine({ start: { x: margin, y: height - 132 }, end: { x: width - margin, y: height - 132 }, thickness: 0.5, color: accent, opacity: 0.65 });
 
   // Footer
-  drawCenteredText(page, `cveaver.app · ${current} de ${total}`, { y: 30, font: fonts.serif, size: 9, color: rgb(0.5, 0.41, 0.27), pageWidth: width });
+  drawCenteredText(page, `cveaver.com · ${current} de ${total}`, { y: 30, font: fonts.serif, size: 9, color: rgb(0.5, 0.41, 0.27), pageWidth: width });
 
   return { left: margin, right: width - margin, top: height - 148, bottom: 56 };
 }
@@ -240,7 +240,7 @@ function drawMinimalChrome(page: PDFPage, cert: CertificateItem, current: number
   page.drawLine({ start: { x: margin, y: height - 118 }, end: { x: margin + 36, y: height - 118 }, thickness: 1.4, color: accent });
 
   // Footer
-  page.drawText('cveaver.app', { x: margin, y: 28, size: 8.5, font: fonts.sans, color: rgb(0.5, 0.41, 0.27) });
+  page.drawText('cveaver.com', { x: margin, y: 28, size: 8.5, font: fonts.sans, color: rgb(0.5, 0.41, 0.27) });
   const right = `${current} / ${total}`;
   const tw = fonts.sans.widthOfTextAtSize(right, 8.5);
   page.drawText(right, { x: width - margin - tw, y: 28, size: 8.5, font: fonts.sans, color: rgb(0.5, 0.41, 0.27) });
@@ -272,7 +272,7 @@ function drawCreativeChrome(page: PDFPage, cert: CertificateItem, current: numbe
 
   // Footer accent strip
   page.drawRectangle({ x: 0, y: 0, width, height: FOOTER_H, color: accent });
-  page.drawText('cveaver.app', { x: margin, y: 12, size: 9, font: fonts.sansBold, color: rgb(1, 1, 1, 0.88) });
+  page.drawText('cveaver.com', { x: margin, y: 12, size: 9, font: fonts.sansBold, color: rgb(1, 1, 1, 0.88) });
   const right = `${current} / ${total}`;
   const tw = fonts.sansBold.widthOfTextAtSize(right, 9);
   page.drawText(right, { x: width - margin - tw, y: 12, size: 9, font: fonts.sansBold, color: rgb(1, 1, 1, 0.88) });
@@ -298,7 +298,7 @@ function drawExecutiveChrome(page: PDFPage, cert: CertificateItem, current: numb
   // Bottom double rule
   page.drawLine({ start: { x: margin, y: 60 }, end: { x: width - margin, y: 60 }, thickness: 0.5, color: accent, opacity: 0.65 });
   page.drawLine({ start: { x: margin, y: 56 }, end: { x: width - margin, y: 56 }, thickness: 1.6, color: accent });
-  drawCenteredText(page, `cveaver.app · ${current} de ${total}`, { y: 36, font: fonts.serif, size: 9, color: rgb(0.5, 0.41, 0.27), pageWidth: width });
+  drawCenteredText(page, `cveaver.com · ${current} de ${total}`, { y: 36, font: fonts.serif, size: 9, color: rgb(0.5, 0.41, 0.27), pageWidth: width });
 
   return { left: margin, right: width - margin, top: height - 152, bottom: 80 };
 }

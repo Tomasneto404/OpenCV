@@ -357,7 +357,11 @@ if (!IS_PROD) {
       if (!cv) return res.status(400).json({ error: 'Missing cv' });
       const now = new Date().toISOString();
       const meta = { createdAt: now, lastEditAt: now, editCount: 1, lastSentEmail: null };
-      const pdf = await renderLimit(() => renderPdf(cv, { meta }));
+      // Sign internally so the update flow recognises this PDF when the
+      // user re-uploads it (otherwise /decode-pdf returns verified=false).
+      const signature = signCV(cv);
+      const publicKey = getPublicKey();
+      const pdf = await renderLimit(() => renderPdf(cv, { meta, signature, publicKey }));
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="dev-${Date.now()}.pdf"`);
       /* Mirror /pdf headers so the client's downloadPaidPdf gets a meta

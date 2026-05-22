@@ -25,7 +25,7 @@ import { CertificatesSection } from './Form/CertificatesSection';
 import { TemplatePicker } from './TemplatePicker';
 import { Preview } from './Preview';
 import { downloadDevPdf } from '../utils/pdf';
-import { downloadConfig, slugify } from '../utils/download';
+import { slugify } from '../utils/download';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { sectionStatus, isCvEmpty, type SectionKey } from '../utils/completion';
 import { useToast } from './Toast';
@@ -130,11 +130,6 @@ export function Builder({
                   catch (err) { toast.push({ kind: 'error', title: t('toast.pdfFailTitle'), body: (err as Error).message }); }
                 }}
               >dev: PDF</button>
-              <button
-                className="btn-ghost text-[11px] px-2 py-1.5"
-                title="Dev — descarregar configuração sem pagar"
-                onClick={() => downloadConfig(cv, `${slugify(cv.personal.fullName) || 'cv'}-config.json`)}
-              >dev: JSON</button>
             </>
           )}
 

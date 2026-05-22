@@ -12,7 +12,7 @@
  *     plus a copyright row and a small icon for theme/locale recap
  *
  * Update-flow gate:
- *   - Verified (server-decrypted PDF or original JSON) → eligible €0.50.
+ *   - Verified (server-decrypted PDF) → eligible €0.50.
  *   - Otherwise → toast and route to Builder at full €1.
  */
 import { useRef, useState, type ReactNode } from 'react';
@@ -22,6 +22,7 @@ import { useToast } from './Toast';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { BrandMark } from './BrandMark';
 import { ThemeToggle } from './ThemeToggle';
+import { FaqItem } from './FaqItem';
 import { useT } from '../i18n';
 import { PRICES, formatPrice } from '../utils/format';
 
@@ -90,19 +91,19 @@ export function Landing({ onNew, onLoadConfig, onSample, onNavigate }: Props) {
       </nav>
 
       {/* ── Hero ───────────────────────────────────────────────────── */}
-      <header className="px-6 pt-20 pb-24 sm:pt-28 sm:pb-32 text-center max-w-3xl mx-auto">
-        <div className="flex justify-center mb-8 animate-rise">
-          <BrandMark size={144} />
+      <header className="px-6 pt-16 pb-10 sm:pt-20 sm:pb-14 text-center max-w-4xl mx-auto">
+        <div className="flex justify-center mb-7 animate-rise">
+          <BrandMark size={120} />
         </div>
 
         <div
-          className="inline-flex items-center gap-2 text-[12.5px] font-medium text-[color:var(--color-ink-muted)] mb-7 px-3 py-1.5 rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-glass-bg)] backdrop-blur animate-rise"
+          className="inline-flex items-center gap-2 text-[12.5px] font-medium text-[color:var(--color-ink-muted)] mb-6 px-3 py-1.5 rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-glass-bg)] backdrop-blur animate-rise"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-accent-500)]" />
           {t('landing.hero.badge')}
         </div>
 
-        <h1 className="text-[44px] sm:text-[64px] font-bold leading-[1.04] tracking-[-0.025em] animate-rise" style={{ fontFamily: 'Fraunces, serif' }}>
+        <h1 className="text-[40px] sm:text-[56px] font-bold leading-[1.05] tracking-[-0.025em] animate-rise" style={{ fontFamily: 'Fraunces, serif' }}>
           {t('landing.hero.title')}{' '}
           <span className="bg-clip-text text-transparent bg-gradient-to-br from-[color:var(--color-brand-400)] to-[color:var(--color-accent-500)]">
             {t('landing.hero.titleAccent')}
@@ -110,71 +111,69 @@ export function Landing({ onNew, onLoadConfig, onSample, onNavigate }: Props) {
           <span className="text-[color:var(--color-ink)]">.</span>
         </h1>
 
-        <p className="mt-7 text-[17px] sm:text-[18px] leading-[1.55] text-[color:var(--color-ink-muted)] max-w-2xl mx-auto animate-rise-delay">
+        <p className="mt-5 text-[16.5px] sm:text-[17px] leading-[1.55] text-[color:var(--color-ink-muted)] max-w-2xl mx-auto animate-rise-delay">
           {t('landing.hero.subtitle', { price: priceNew, updatePrice: priceUpdate })}
         </p>
+      </header>
 
-        <div className="mt-9 flex flex-col sm:flex-row gap-3 items-center justify-center animate-rise-delay">
-          <button onClick={onNew} className="btn-primary px-6 text-[15px]">
-            {t('landing.hero.ctaCreate', { price: priceNew })}
-          </button>
-          <button onClick={onSample} className="btn-ghost px-6 text-[15px]">
-            {t('landing.hero.ctaSample')}
+      {/* ── Dual choice — the big call ─────────────────────────────── */}
+      <section className="px-6 max-w-5xl mx-auto animate-rise-delay">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
+          <ChoiceCard
+            tone="primary"
+            label={t('landing.pricing.newLabel')}
+            price={priceNew}
+            title={t('landing.pricing.newTitle')}
+            body={t('landing.pricing.newBody')}
+            ctaLabel={t('landing.pricing.newCta')}
+            onClick={onNew}
+            icon={<IconCreate />}
+          />
+          <ChoiceCard
+            tone="secondary"
+            label={t('landing.pricing.updateLabel')}
+            price={priceUpdate}
+            title={t('landing.pricing.updateTitle')}
+            body={t('landing.pricing.updateBody')}
+            ctaLabel={busy ? t('landing.pricing.updateBusy') : t('landing.pricing.updateCta')}
+            onClick={() => fileRef.current?.click()}
+            disabled={busy}
+            icon={<IconUpdate />}
+          />
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          hidden
+          onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+        />
+
+        {/* "Ver exemplo" — refined text link with sliding arrow */}
+        <div className="mt-8 flex justify-center animate-rise-delay2">
+          <button
+            type="button"
+            onClick={onSample}
+            className="group inline-flex items-center gap-2 px-4 h-10 rounded-full text-[14px] font-medium text-[color:var(--color-ink-muted)] border border-[color:var(--color-border)] hover:border-[color:var(--color-border-strong)] hover:text-[color:var(--color-ink)] bg-[color:var(--color-glass-bg)] transition-all duration-200"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span>{t('landing.hero.ctaSample')}</span>
+            <span
+              className="text-[color:var(--color-ink-faint)] transition-transform duration-200 group-hover:translate-x-0.5"
+              aria-hidden
+            >→</span>
           </button>
         </div>
 
-        <div className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[12.5px] text-[color:var(--color-ink-faint)] animate-rise-delay2">
+        {/* Feature pills — payment methods + email */}
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[12.5px] text-[color:var(--color-ink-faint)] animate-rise-delay2">
           <Feat>{t('landing.hero.feature1')}</Feat>
           <Feat>{t('landing.hero.feature2')}</Feat>
           <Feat>{t('landing.hero.feature3')}</Feat>
           <Feat>{t('landing.hero.feature4')}</Feat>
-        </div>
-      </header>
-
-      {/* ── Pricing dual-CTA ───────────────────────────────────────── */}
-      <section className="px-6 max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
-        <button onClick={onNew} className="group glass rounded-2xl p-7 text-left transition-all duration-300 ease-out hover:-translate-y-[3px]" style={{ boxShadow: 'var(--shadow-soft)' }} onMouseEnter={(e) => (e.currentTarget.style.boxShadow = 'var(--shadow-elevated)')} onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'var(--shadow-soft)')}>
-          <div className="flex items-center justify-between">
-            <span className="text-[11.5px] uppercase tracking-[0.18em] text-[color:var(--color-ink-muted)] font-semibold">
-              {t('landing.pricing.newLabel')}
-            </span>
-            <span className="text-xl font-bold tracking-tight">{priceNew}</span>
-          </div>
-          <h3 className="mt-4 text-[22px] font-semibold tracking-tight">{t('landing.pricing.newTitle')}</h3>
-          <p className="mt-2 text-[14.5px] text-[color:var(--color-ink-muted)] leading-relaxed">
-            {t('landing.pricing.newBody')}
-          </p>
-          <span className="mt-5 inline-flex items-center gap-1 text-[color:var(--color-brand-500)] text-sm font-medium transition-all duration-200 group-hover:gap-2">
-            {t('landing.pricing.newCta')}
-          </span>
-        </button>
-
-        <div
-          className="glass rounded-2xl p-7 text-left transition-all duration-300 ease-out hover:-translate-y-[3px]"
-          style={{ boxShadow: 'var(--shadow-soft)' }}
-          onMouseEnter={(e) => (e.currentTarget.style.boxShadow = 'var(--shadow-elevated)')}
-          onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'var(--shadow-soft)')}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11.5px] uppercase tracking-[0.18em] text-[color:var(--color-ink-muted)] font-semibold">
-              {t('landing.pricing.updateLabel')}
-            </span>
-            <span className="text-xl font-bold tracking-tight">{priceUpdate}</span>
-          </div>
-          <h3 className="mt-4 text-[22px] font-semibold tracking-tight">{t('landing.pricing.updateTitle')}</h3>
-          <p className="mt-2 text-[14.5px] text-[color:var(--color-ink-muted)] leading-relaxed">
-            {t('landing.pricing.updateBody')}
-          </p>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/pdf,application/json,.pdf,.json"
-            hidden
-            onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
-          />
-          <button className="btn-ghost mt-5" onClick={() => fileRef.current?.click()} disabled={busy}>
-            {busy ? t('landing.pricing.updateBusy') : t('landing.pricing.updateCta')}
-          </button>
         </div>
       </section>
 
@@ -224,9 +223,9 @@ export function Landing({ onNew, onLoadConfig, onSample, onNavigate }: Props) {
           </h2>
         </div>
         <div className="space-y-3">
-          <Faq q={t('landing.faqShort.q1')}>{t('landing.faqShort.a1')}</Faq>
-          <Faq q={t('landing.faqShort.q2')}>{t('landing.faqShort.a2')}</Faq>
-          <Faq q={t('landing.faqShort.q3')}>{t('landing.faqShort.a3', { updatePrice: priceUpdate })}</Faq>
+          <FaqItem q={t('landing.faqShort.q1')}>{t('landing.faqShort.a1')}</FaqItem>
+          <FaqItem q={t('landing.faqShort.q2')}>{t('landing.faqShort.a2')}</FaqItem>
+          <FaqItem q={t('landing.faqShort.q3')}>{t('landing.faqShort.a3', { updatePrice: priceUpdate })}</FaqItem>
         </div>
         <div className="text-center mt-6">
           <a
@@ -296,6 +295,104 @@ function Feat({ children }: { children: ReactNode }) {
   );
 }
 
+/* ── Dual choice card ─────────────────────────────────────────────────
+   "primary" tone uses the brand colour for the CTA + icon halo, signalling
+   the default path (new CV). "secondary" stays neutral so the two cards
+   feel equally clickable, just visually distinct. */
+interface ChoiceCardProps {
+  tone: 'primary' | 'secondary';
+  label: string;
+  price: string;
+  title: string;
+  body: string;
+  ctaLabel: string;
+  onClick: () => void;
+  disabled?: boolean;
+  icon: ReactNode;
+}
+
+function ChoiceCard({ tone, label, price, title, body, ctaLabel, onClick, disabled, icon }: ChoiceCardProps) {
+  const isPrimary = tone === 'primary';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={[
+        'group relative overflow-hidden rounded-3xl border text-left p-7 sm:p-8',
+        'transition-all duration-300 ease-out',
+        'hover:-translate-y-[3px] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-brand-400)]',
+        isPrimary
+          ? 'border-[color:var(--color-border-strong)] bg-[color:var(--color-glass-bg)]'
+          : 'border-[color:var(--color-border)] bg-[color:var(--color-glass-bg)]',
+      ].join(' ')}
+      style={{ boxShadow: 'var(--shadow-soft)' }}
+      onMouseEnter={(e) => !disabled && (e.currentTarget.style.boxShadow = 'var(--shadow-elevated)')}
+      onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'var(--shadow-soft)')}
+    >
+      {/* Subtle accent glow corner — only on primary card */}
+      {isPrimary && (
+        <span
+          aria-hidden
+          className="absolute -top-12 -right-12 h-44 w-44 rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(closest-side, rgba(152,100,31,0.20), transparent)' }}
+        />
+      )}
+
+      <div className="relative flex items-center justify-between mb-6">
+        <div
+          className={[
+            'inline-flex items-center justify-center h-11 w-11 rounded-2xl',
+            isPrimary
+              ? 'bg-[color:var(--color-brand-500)] text-white'
+              : 'bg-[color:var(--color-glass-bg)] border border-[color:var(--color-border-strong)] text-[color:var(--color-ink)]',
+          ].join(' ')}
+          style={isPrimary ? { boxShadow: '0 6px 18px -8px rgba(152,100,31,0.55)' } : undefined}
+        >
+          {icon}
+        </div>
+        <div className="flex items-baseline gap-1">
+          <span className="text-[10.5px] uppercase tracking-[0.22em] text-[color:var(--color-ink-muted)] font-semibold">
+            {label}
+          </span>
+          <span className="text-[28px] sm:text-[32px] font-bold tracking-tight ml-3" style={{ fontFamily: 'Fraunces, serif' }}>
+            {price}
+          </span>
+        </div>
+      </div>
+
+      <h3 className="text-[22px] sm:text-[24px] font-semibold tracking-tight leading-tight">{title}</h3>
+      <p className="mt-3 text-[14.5px] text-[color:var(--color-ink-muted)] leading-relaxed">{body}</p>
+
+      <div className="mt-7 inline-flex items-center gap-1.5 text-[14.5px] font-medium text-[color:var(--color-brand-500)] transition-all duration-200 group-hover:gap-2.5">
+        <span>{ctaLabel}</span>
+        <span aria-hidden>→</span>
+      </div>
+    </button>
+  );
+}
+
+function IconCreate() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
+function IconUpdate() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+      <path d="M21 3v5h-5" />
+      <path d="M3 21v-5h5" />
+    </svg>
+  );
+}
+
 function Step({ n, title, body }: { n: number; title: string; body: string }) {
   return (
     <li className="glass rounded-2xl p-6 transition-all duration-300 hover:-translate-y-[2px]" style={{ boxShadow: 'var(--shadow-soft)' }}>
@@ -307,18 +404,6 @@ function Step({ n, title, body }: { n: number; title: string; body: string }) {
       </div>
       <p className="mt-3 text-[14px] text-[color:var(--color-ink-muted)] leading-relaxed">{body}</p>
     </li>
-  );
-}
-
-function Faq({ q, children }: { q: string; children: ReactNode }) {
-  return (
-    <details className="group rounded-2xl border border-[color:var(--color-border)] bg-[color:var(--color-glass-bg)] open:border-[color:var(--color-border-strong)] transition-colors">
-      <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between gap-4 text-[15px] font-medium">
-        <span>{q}</span>
-        <span className="text-[color:var(--color-ink-faint)] transition-transform duration-200 group-open:rotate-45 text-lg leading-none">+</span>
-      </summary>
-      <div className="px-5 pb-5 text-[14px] text-[color:var(--color-ink-muted)] leading-relaxed">{children}</div>
-    </details>
   );
 }
 

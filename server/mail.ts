@@ -66,7 +66,7 @@ export async function sendCvByEmail(opts: SendCvOptions): Promise<boolean> {
 
 Aqui vai o teu CV, em anexo, em PDF.
 
-Para atualizar mais tarde, vai a https://cveaver.app, carrega este PDF e edita o que precisares — pagas apenas a tarifa de atualização.
+Para atualizar mais tarde, vai a https://cveaver.com, carrega este PDF e edita o que precisares — pagas apenas a tarifa de atualização.
 
 Obrigado por usares o CVeaver.`,
       attachments: [

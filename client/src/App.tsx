@@ -30,6 +30,7 @@ import { createCheckout, fetchCV, saveCV, verifySession } from './api';
 import { useToast } from './components/Toast';
 import { useT } from './i18n';
 import { PRICES, formatPrice } from './utils/format';
+import { buildSampleEnhanced } from './utils/sampleAssets';
 
 // =====================================================================
 // FIXME: PAYMENT BYPASS — TEST MODE ONLY · REMOVE BEFORE PRODUCTION
@@ -147,8 +148,12 @@ export function App() {
     setScreen('builder');
   };
 
-  const loadSample = () => {
-    replace(sampleCV());
+  const loadSample = async () => {
+    // Load the demo CV + enrich with a profile photo (the CVeaver logo)
+    // and a fictional sample certificate so the certs UI/preview shows
+    // something out of the box.
+    const enriched = await buildSampleEnhanced(sampleCV());
+    replace(enriched);
     setMode('new');
     setCurrentMeta(undefined);
     setPrevPayloadB64(undefined);
@@ -156,7 +161,10 @@ export function App() {
     setScreen('builder');
   };
 
-  const loadSampleInBuilder = () => { replace(sampleCV()); };
+  const loadSampleInBuilder = async () => {
+    const enriched = await buildSampleEnhanced(sampleCV());
+    replace(enriched);
+  };
 
   const pay = async () => {
     setPaying(true);

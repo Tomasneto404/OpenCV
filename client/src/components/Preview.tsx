@@ -229,7 +229,7 @@ function ClassicFrame({ cert, accent, thumb, busy }: FrameProps) {
         textAlign: 'center', fontSize: 10, color: '#806743',
         fontFamily: '"Fraunces", Georgia, serif',
       }}>
-        cveaver.app · {cert.pageCount} {cert.pageCount === 1 ? 'pág.' : 'págs.'}
+        cveaver.com · {cert.pageCount} {cert.pageCount === 1 ? 'pág.' : 'págs.'}
       </footer>
     </>
   );
@@ -267,7 +267,7 @@ function MinimalFrame({ cert, accent, thumb, busy }: FrameProps) {
         fontSize: 10, color: '#806743',
         fontFamily: 'Inter, sans-serif',
       }}>
-        <span>cveaver.app</span>
+        <span>cveaver.com</span>
         <span>{cert.pageCount} {cert.pageCount === 1 ? 'pág.' : 'págs.'}</span>
       </footer>
     </>
@@ -304,7 +304,7 @@ function CreativeFrame({ cert, accent, thumb, busy }: FrameProps) {
         fontSize: 10, fontWeight: 600,
         fontFamily: 'Inter, sans-serif',
       }}>
-        <span>cveaver.app</span>
+        <span>cveaver.com</span>
         <span>{cert.pageCount} {cert.pageCount === 1 ? 'pág.' : 'págs.'}</span>
       </footer>
     </>
@@ -341,7 +341,7 @@ function ExecutiveFrame({ cert, accent, thumb, busy }: FrameProps) {
         <div style={{ borderTop: `0.7px solid ${accent}`, opacity: 0.65, marginBottom: 4 }} />
         <div style={{ borderTop: `2px solid ${accent}`, marginBottom: 10 }} />
         <p style={{ fontSize: 10, color: '#806743', margin: 0 }}>
-          cveaver.app · {cert.pageCount} {cert.pageCount === 1 ? 'pág.' : 'págs.'}
+          cveaver.com · {cert.pageCount} {cert.pageCount === 1 ? 'pág.' : 'págs.'}
         </p>
       </footer>
     </>
@@ -374,7 +374,7 @@ function WatermarkOverlay() {
             fill="rgba(83, 138, 76, 0.20)"
             letterSpacing="4"
           >
-            NOT PAID · cveaver.app
+            NOT PAID · cveaver.com
           </text>
         </pattern>
       </defs>

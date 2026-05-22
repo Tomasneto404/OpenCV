@@ -116,7 +116,7 @@ app.use(helmet({
 }));
 
 app.use(cors({ origin: clientUrl }));
-app.use(express.json({ limit: '20mb' }));
+app.use(express.json({ limit: '60mb' })); // photo + up to ~50 MB of certs
 /* /decode-pdf accepts the raw PDF bytes — registered just on that route. */
 
 /* PDF renders are heavy. Cap concurrency. */

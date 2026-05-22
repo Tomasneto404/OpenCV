@@ -38,7 +38,8 @@
       "Bash(curl -s -X POST http://localhost:3001/dev/pdf -H 'Content-Type: application/json' -d '{\"cv\":{\"version\":1,\"template\":\"modern\",\"accentColor\":\"#1e3a8a\",\"personal\":{\"fullName\":\"Crypto Test\",\"headline\":\"\",\"email\":\"\",\"phone\":\"\",\"location\":\"\",\"website\":\"\",\"linkedin\":\"\",\"github\":\"\"},\"summary\":\"\",\"experience\":[],\"education\":[],\"skills\":[],\"languages\":[],\"projects\":[],\"certificates\":[]}}' -o /tmp/crypto-test.pdf)",
       "Bash(curl -s -X POST http://localhost:3001/decode-pdf -H 'Content-Type: application/pdf' --data-binary @/tmp/crypto-test.pdf)",
       "Bash(xxd /tmp/rt-test.pdf)",
-      "Bash(curl -s http://localhost:5173/)"
+      "Bash(curl -s http://localhost:5173/)",
+      "Bash(git -C /Users/tomasneto/Documents/Coding/easyCV push)"
     ]
   }
 }

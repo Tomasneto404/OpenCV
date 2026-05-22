@@ -67,6 +67,9 @@ export interface CertificateItem {
   bytes: number;
   pageCount: number;
   hash: string;
+  /** Default true — server embeds the certificate inside a branded
+   *  template frame. When false, copyPages 1:1 (legacy behaviour). */
+  framed?: boolean;
 }
 
 export interface CVData {

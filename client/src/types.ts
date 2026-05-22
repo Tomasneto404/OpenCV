@@ -80,6 +80,10 @@ export interface CertificateItem {
   bytes: number;
   pageCount: number;
   hash: string;
+  /** When true (default), the server embeds the certificate inside a
+   *  branded page template (header with name/description + accent colour
+   *  border) instead of copying the raw pages 1:1. Toggle in the UI. */
+  framed?: boolean;
 }
 
 export interface CVData {

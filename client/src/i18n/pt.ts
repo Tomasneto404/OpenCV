@@ -96,6 +96,25 @@ export const dict = {
       a3: 'Carregas de volta o PDF (ou o .json antigo), mudas o que quiseres, pagas {updatePrice}.',
     },
     footer: 'Pagamento seguro via Stripe. Os teus dados não saem do teu browser sem o teu consentimento.',
+    footerNav: {
+      tagline: 'CV pronto em minutos. Sem registo, sem subscrição.',
+      product: {
+        title: 'Produto',
+        create: 'Criar CV',
+        update: 'Atualizar CV',
+        templates: 'Templates',
+      },
+      support: {
+        title: 'Suporte',
+      },
+      legal: {
+        title: 'Legal',
+        privacy: 'Privacidade',
+        comingSoon: 'Em breve',
+      },
+      copyright: '© {year} CVeaver. Todos os direitos reservados.',
+      craftedIn: 'Feito em Portugal · 🐾',
+    },
   },
 
   builder: {
@@ -156,7 +175,7 @@ export const dict = {
 
   certificates: {
     title: 'Certificados (PDF)',
-    help: 'Anexa diplomas / certificações em PDF. Ficam como páginas no fim do CV. Máx. 5 ficheiros · 5 MB cada · 15 MB total.',
+    help: 'Anexa diplomas e certificações em PDF. Aparecem no fim do CV. Até 10 MB por ficheiro · 50 MB total · só PDF.',
     empty: 'Sem certificados.',
     addCta: 'Adicionar certificado',
     name: 'Nome',
@@ -165,10 +184,13 @@ export const dict = {
     sizeLabel: '{size} · {pages} {pageLabel}',
     page: 'página',
     pages: 'páginas',
-    totalLabel: 'Total: {total} de 15 MB',
-    errTooMany: 'Máximo 5 certificados.',
-    errTooLarge: 'Ficheiro maior que 5 MB.',
-    errTotalCap: 'Excede 15 MB no total.',
+    totalLabel: 'Total: {total} de {cap}',
+    framed: 'Moldura CVeaver',
+    framedHelp: 'Insere o certificado dentro de uma página com a cor de destaque e o cabeçalho do CV.',
+    dragHandle: 'Arrastar para reordenar',
+    quotaWarn: 'Total acima de 5 MB — o auto-save no browser pode falhar. Considera remover ficheiros grandes ou pagar e descarregar antes de acumulares mais.',
+    errTooLarge: 'Ficheiro maior que 10 MB.',
+    errTotalCap: 'Excede 50 MB no total.',
     errEncrypted: 'PDF cifrado / com password não é suportado.',
     errBadPdf: 'Ficheiro PDF inválido.',
   },

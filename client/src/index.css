@@ -1,24 +1,27 @@
 /**
  * Global theme + utility classes.
  *
+ * Premium feel notes (Sessão 23):
+ *  - Solid-colour primary CTAs (no gradient) with layered shadows. Apple-y.
+ *  - Frosted sticky nav (.nav-glass) with strong backdrop blur + saturate.
+ *  - Vertical rhythm: sections breathe (mt-28..mt-36 in landing).
+ *  - Border-radius ladder: 8 / 12 / 16 / 20 / 24 / 28 / 999.
+ *  - Subtle motion via cubic-bezier curves on hover/active.
+ *
  * Two palettes meet here:
  *  - The WebUI palette (CVeaver — warm browns + leaf accent), declared as
  *    Tailwind v4 CSS custom properties under @theme. Anything UI-facing
- *    (buttons, fields, cards) consumes these.
- *  - The CV accentColor stored in the user's CV data lives separately and only
- *    affects the rendered CV preview/PDF — see PersonalSection swatches.
+ *    consumes these.
+ *  - The CV accentColor stored in the user's CV data lives separately and
+ *    only affects the rendered CV preview/PDF — see PersonalSection swatches.
  *
  * Light / dark:
- *  - Tokens are split into "static" (brand colours) under @theme and
- *    "themed" surface/ink tokens redefined under :root + [data-theme="dark"].
+ *  - Tokens split into "static" (brand colours) under @theme and "themed"
+ *    surface/ink tokens redefined under :root + [data-theme="dark"].
  *  - `data-theme` is set on <html> by an inline script in index.html (avoids
  *    FOUC) and toggled by the ThemeToggle component.
- *  - The choice is persisted in localStorage('cveaver:theme'). When unset we
- *    follow `prefers-color-scheme`.
- *
- * Why two palettes? The WebUI is themable; the CV must stay print-friendly
- * (white background, sober accents). Mixing them confused users in earlier
- * iterations.
+ *  - Persisted in localStorage('cveaver:theme'); falls back to
+ *    prefers-color-scheme on first visit.
  */
 @import "tailwindcss";
 
@@ -26,193 +29,372 @@
 
 @theme {
   /* Fonts ----------------------------------------------------------------- */
-  --font-sans:  "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans:  "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces", "SF Pro Display", ui-serif, Georgia, serif;
   --font-mono:  "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Brand (primary) — beaver wood-brown, used for primary CTAs + brand mark */
-  --color-brand-50:  #faf3e8;
-  --color-brand-100: #f0e1c6;
-  --color-brand-200: #e3c89c;
-  --color-brand-300: #d3a96d;
-  --color-brand-400: #b9874a;
-  --color-brand-500: #9c6a33;
-  --color-brand-600: #7e5326;
-  --color-brand-700: #5f3e1c;
-  --color-brand-800: #432c14;
-  --color-brand-900: #2c1c0b;
+  /* Brand (primary) — beaver walnut, refined.
+     Slightly more saturated mid-tones for solid-fill buttons. */
+  --color-brand-50:  #faf2e3;
+  --color-brand-100: #f0dfba;
+  --color-brand-200: #e1c386;
+  --color-brand-300: #ce9f54;
+  --color-brand-400: #b67f33;
+  --color-brand-500: #98641f;
+  --color-brand-600: #794d16;
+  --color-brand-700: #5b3a11;
+  --color-brand-800: #3f280c;
+  --color-brand-900: #261806;
 
-  /* Accent (secondary) — leaf green, paired with brand in gradients */
-  --color-accent-300: #9dc995;
-  --color-accent-400: #6ea867;
-  --color-accent-500: #4d8a45;
-  --color-accent-600: #386b32;
-  --color-accent-700: #275024;
+  /* Accent (secondary) — moss / leaf, restrained */
+  --color-accent-300: #a9d4a3;
+  --color-accent-400: #76ad6f;
+  --color-accent-500: #538a4c;
+  --color-accent-600: #3c6c36;
+  --color-accent-700: #2b4f27;
 }
 
 /* ── Themed tokens (light is default; dark overrides) ─────────────────── */
 :root {
-  --color-surface-0: #faf6ef;   /* page bg (parchment) */
+  /* Surfaces — bone-white parchment, near-paper, with a hint of warmth.
+     Less yellow than the previous palette; reads more "premium stationery". */
+  --color-surface-0: #f8f4ec;   /* page bg */
   --color-surface-1: #ffffff;   /* raised cards */
-  --color-surface-2: #f3e9d4;   /* nav / sticky bars */
+  --color-surface-2: #f1eadd;   /* nav / sticky bars */
 
-  --color-ink:        #2c1c0b;
-  --color-ink-muted:  rgba(44, 28, 11, 0.62);
-  --color-ink-faint:  rgba(44, 28, 11, 0.40);
+  /* Ink — warm near-black; mix in brand at higher opacities for hierarchy. */
+  --color-ink:        #1c1308;
+  --color-ink-muted:  rgba(28, 19, 8, 0.62);
+  --color-ink-faint:  rgba(28, 19, 8, 0.40);
 
-  --color-border:        rgba(44, 28, 11, 0.10);
-  --color-border-strong: rgba(44, 28, 11, 0.18);
+  --color-border:        rgba(28, 19, 8, 0.08);
+  --color-border-strong: rgba(28, 19, 8, 0.16);
 
-  --color-glass-bg:     rgba(255, 255, 255, 0.55);
-  --color-glass-border: rgba(44, 28, 11, 0.10);
-  --color-field-bg:     rgba(255, 255, 255, 0.75);
+  --color-glass-bg:     rgba(255, 255, 255, 0.62);
+  --color-glass-border: rgba(28, 19, 8, 0.08);
+  --color-nav-bg:       rgba(248, 244, 236, 0.72);
+
+  --color-field-bg:     rgba(255, 255, 255, 0.80);
   --color-field-hover:  rgba(255, 255, 255, 1);
 
-  --shadow-card: 0 14px 40px -18px rgba(67, 44, 20, 0.25);
+  /* Layered shadows — Apple uses softer, multi-layer drops. */
+  --shadow-soft:
+    0 1px 2px rgba(28, 19, 8, 0.04),
+    0 4px 14px -8px rgba(28, 19, 8, 0.10);
+  --shadow-card:
+    0 1px 3px rgba(28, 19, 8, 0.04),
+    0 10px 40px -16px rgba(67, 44, 20, 0.16);
+  --shadow-elevated:
+    0 4px 12px -2px rgba(28, 19, 8, 0.06),
+    0 20px 60px -12px rgba(67, 44, 20, 0.20);
+  --shadow-btn:
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 1px 2px rgba(28, 19, 8, 0.10),
+    0 8px 24px -10px rgba(152, 100, 31, 0.45);
+  --shadow-btn-hover:
+    0 1px 0 rgba(255, 255, 255, 0.28) inset,
+    0 1px 2px rgba(28, 19, 8, 0.14),
+    0 12px 32px -8px rgba(152, 100, 31, 0.55);
 
-  --ambient-1: rgba(156, 106, 51, 0.22);  /* brand glow */
-  --ambient-2: rgba(77, 138, 69, 0.16);   /* leaf glow */
-  --ambient-3: rgba(211, 169, 109, 0.10);
+  --ambient-1: rgba(152, 100, 31, 0.18);
+  --ambient-2: rgba(83, 138, 76, 0.12);
+  --ambient-3: rgba(206, 159, 84, 0.08);
 }
 
 [data-theme="dark"] {
-  --color-surface-0: #161009;   /* deep coffee */
-  --color-surface-1: #1f1610;   /* raised */
-  --color-surface-2: #2a1f15;   /* sticky bars */
+  --color-surface-0: #110b06;
+  --color-surface-1: #1a1209;
+  --color-surface-2: #251a10;
 
-  --color-ink:        #f4ead7;
-  --color-ink-muted:  rgba(244, 234, 215, 0.66);
-  --color-ink-faint:  rgba(244, 234, 215, 0.40);
+  --color-ink:        #f3e8d2;
+  --color-ink-muted:  rgba(243, 232, 210, 0.66);
+  --color-ink-faint:  rgba(243, 232, 210, 0.38);
 
-  --color-border:        rgba(244, 234, 215, 0.08);
-  --color-border-strong: rgba(244, 234, 215, 0.16);
+  --color-border:        rgba(243, 232, 210, 0.08);
+  --color-border-strong: rgba(243, 232, 210, 0.16);
 
-  --color-glass-bg:     rgba(255, 255, 255, 0.04);
-  --color-glass-border: rgba(255, 255, 255, 0.08);
+  --color-glass-bg:     rgba(255, 255, 255, 0.03);
+  --color-glass-border: rgba(255, 255, 255, 0.07);
+  --color-nav-bg:       rgba(17, 11, 6, 0.62);
+
   --color-field-bg:     rgba(255, 255, 255, 0.04);
   --color-field-hover:  rgba(255, 255, 255, 0.06);
 
-  --shadow-card: 0 20px 50px -22px rgba(0, 0, 0, 0.6);
+  --shadow-soft:
+    0 1px 2px rgba(0, 0, 0, 0.30),
+    0 4px 14px -6px rgba(0, 0, 0, 0.50);
+  --shadow-card:
+    0 1px 3px rgba(0, 0, 0, 0.40),
+    0 20px 50px -20px rgba(0, 0, 0, 0.65);
+  --shadow-elevated:
+    0 4px 12px -2px rgba(0, 0, 0, 0.50),
+    0 30px 80px -16px rgba(0, 0, 0, 0.75);
+  --shadow-btn:
+    0 1px 0 rgba(255, 255, 255, 0.10) inset,
+    0 1px 2px rgba(0, 0, 0, 0.40),
+    0 10px 28px -12px rgba(152, 100, 31, 0.65);
+  --shadow-btn-hover:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 2px 4px rgba(0, 0, 0, 0.45),
+    0 14px 36px -10px rgba(152, 100, 31, 0.80);
 
-  --ambient-1: rgba(156, 106, 51, 0.30);
-  --ambient-2: rgba(77, 138, 69, 0.22);
-  --ambient-3: rgba(185, 135, 74, 0.08);
+  --ambient-1: rgba(152, 100, 31, 0.32);
+  --ambient-2: rgba(83, 138, 76, 0.22);
+  --ambient-3: rgba(206, 159, 84, 0.10);
 }
 
 html, body, #root { height: 100%; }
+html { -webkit-text-size-adjust: 100%; }
 
 body {
   font-family: var(--font-sans);
-  /* One large, low-contrast field gradient pulls everything onto a single
-     warm wash. The two smaller blobs are layered on top, but blurred and
-     overlapping enough that they don't read as "3 separate spots" anymore. */
+  /* Two ambient blobs blended over a faint vertical wash. Stays calm. */
   background:
-    radial-gradient(circle at 25% 18%, var(--ambient-1), transparent 55%),
-    radial-gradient(circle at 78% 72%, var(--ambient-2), transparent 60%),
-    linear-gradient(180deg, var(--ambient-3) 0%, transparent 35%, transparent 70%, var(--ambient-1) 120%),
+    radial-gradient(circle at 22% 14%, var(--ambient-1), transparent 56%),
+    radial-gradient(circle at 80% 78%, var(--ambient-2), transparent 60%),
+    linear-gradient(180deg, var(--ambient-3) 0%, transparent 32%, transparent 68%, var(--ambient-1) 120%),
     var(--color-surface-0);
   background-attachment: fixed;
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
-  transition: background-color .2s ease, color .2s ease;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss01", "cv11", "calt";
+  transition: background-color .25s ease, color .25s ease;
 }
 
-/* Brand mark — the PNG logo. In dark mode we invert the line-art for contrast. */
+/* Apple-y type defaults */
+h1, h2, h3, h4, h5 { letter-spacing: -0.015em; }
+h1 { letter-spacing: -0.025em; }
+
+/* ── Brand mark ───────────────────────────────────────────────────────── */
 .brand-mark { display: inline-block; }
 [data-theme="dark"] .brand-mark { filter: invert(1) brightness(0.96); }
 
-/* Glass card — used in landing/pricing/template tiles */
+/* ── Frosted sticky nav ──────────────────────────────────────────────── */
+.nav-glass {
+  background: var(--color-nav-bg);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color .2s ease, border-color .2s ease;
+}
+
+/* ── Glass card ──────────────────────────────────────────────────────── */
 .glass {
   background: var(--color-glass-bg);
   border: 1px solid var(--color-glass-border);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
 }
 
-/* Primary CTA — gradient that ties brand+accent together */
+/* ── Primary CTA ─────────────────────────────────────────────────────── */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  border-radius: 0.75rem;
-  font-weight: 600;
+  height: 2.75rem;             /* 44 px — Apple touch target */
+  padding: 0 1.25rem;
+  border-radius: 0.75rem;      /* 12 px */
+  font-weight: 500;
+  font-size: 0.9375rem;
+  letter-spacing: -0.005em;
   color: white;
-  background: linear-gradient(135deg, var(--color-brand-500) 0%, var(--color-accent-600) 100%);
-  box-shadow:
-    0 10px 30px -10px rgba(156, 106, 51, 0.55),
-    0 6px 20px -6px rgba(77, 138, 69, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+  background: var(--color-brand-500);
+  box-shadow: var(--shadow-btn);
+  transition:
+    transform .18s cubic-bezier(.4, 0, .2, 1),
+    box-shadow .25s cubic-bezier(.4, 0, .2, 1),
+    background-color .2s ease;
 }
-.btn-primary:hover  { transform: translateY(-1px); filter: brightness(1.07); }
-.btn-primary:active { transform: translateY(0); }
-.btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; filter: none; }
-.btn-primary:focus-visible { outline: 2px solid var(--color-brand-300); outline-offset: 2px; }
+.btn-primary:hover {
+  background: var(--color-brand-600);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-btn-hover);
+}
+.btn-primary:active {
+  transform: translateY(0) scale(0.985);
+  box-shadow: var(--shadow-btn);
+}
+.btn-primary:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: var(--shadow-soft);
+}
+.btn-primary:focus-visible {
+  outline: 2px solid var(--color-brand-300);
+  outline-offset: 3px;
+}
 
-/* Secondary / neutral button */
+/* ── Secondary CTA ───────────────────────────────────────────────────── */
 .btn-ghost {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.625rem 1rem;
+  height: 2.75rem;
+  padding: 0 1rem;
   border-radius: 0.75rem;
   font-weight: 500;
+  font-size: 0.9375rem;
   color: var(--color-ink);
   background: var(--color-glass-bg);
   border: 1px solid var(--color-border);
-  transition: background .15s ease, border-color .15s ease;
+  transition:
+    background-color .2s ease,
+    border-color .2s ease,
+    transform .18s cubic-bezier(.4, 0, .2, 1);
 }
-.btn-ghost:hover  { background: var(--color-field-hover); border-color: var(--color-border-strong); }
-.btn-ghost:focus-visible { outline: 2px solid var(--color-brand-300); outline-offset: 2px; }
-.btn-ghost:disabled { opacity: .5; cursor: not-allowed; }
+.btn-ghost:hover {
+  background: var(--color-field-hover);
+  border-color: var(--color-border-strong);
+  transform: translateY(-1px);
+}
+.btn-ghost:active { transform: translateY(0); }
+.btn-ghost:focus-visible {
+  outline: 2px solid var(--color-brand-300);
+  outline-offset: 3px;
+}
+.btn-ghost:disabled { opacity: .55; cursor: not-allowed; transform: none; }
 
-/* Form field */
+/* Compact button variant (icon bars / nav) — text-only feel */
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: auto;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--color-ink-muted);
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: color .15s ease;
+}
+.btn-link:hover { color: var(--color-ink); }
+.btn-link:focus-visible {
+  outline: 2px solid var(--color-brand-300);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* ── Form field ──────────────────────────────────────────────────────── */
 .field {
   width: 100%;
   background: var(--color-field-bg);
   border: 1px solid var(--color-border);
   color: var(--color-ink);
   border-radius: 0.625rem;
-  padding: 0.625rem 0.75rem;
-  font-size: 0.9rem;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.9375rem;
+  line-height: 1.4;
   transition: border-color .15s, background .15s, box-shadow .15s;
 }
+.field:hover { border-color: var(--color-border-strong); }
 .field:focus {
   outline: none;
   border-color: var(--color-brand-400);
   background: var(--color-field-hover);
-  box-shadow: 0 0 0 3px rgba(156, 106, 51, 0.18);
+  box-shadow: 0 0 0 4px rgba(152, 100, 31, 0.15);
 }
 .field::placeholder { color: var(--color-ink-faint); }
-textarea.field { resize: vertical; min-height: 5rem; }
+textarea.field { resize: vertical; min-height: 5.5rem; line-height: 1.55; }
 
 .label {
   font-size: 0.78rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   color: var(--color-ink-muted);
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.4rem;
   display: block;
   font-weight: 500;
 }
 
-/* CV preview surface — always white regardless of WebUI theme. */
+/* ── Section kicker (small uppercase tagline above section titles) ───── */
+.section-kicker {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--color-ink-muted);
+  font-weight: 600;
+}
+
+/* ── Footer link ─────────────────────────────────────────────────────── */
+.footer-col-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--color-ink-muted);
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+.footer-link {
+  display: inline-block;
+  font-size: 0.875rem;
+  color: var(--color-ink-muted);
+  padding: 0.25rem 0;
+  transition: color .15s ease;
+}
+.footer-link:hover { color: var(--color-ink); }
+.footer-link:focus-visible {
+  outline: 2px solid var(--color-brand-300);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.footer-link[aria-disabled="true"] {
+  opacity: .5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── CV preview surface — always white regardless of WebUI theme. ───── */
 .cv-surface {
   color: #111827;
   background: white;
-  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-elevated);
   border-radius: 12px;
   overflow: hidden;
 }
 
-/* ── Anti-print fricção ────────────────────────────────────────────────
-   Hides the entire UI when the user invokes browser Print and shows a
-   message that the real PDF must be downloaded after paying. This is NOT
-   security — toggling "Emulate CSS media type: screen" in DevTools bypasses
-   it. The real paywall is server-side. But it stops the casual "Cmd+P →
-   Save as PDF" route. */
+/* CV page wrapper used in <Preview/>. Uses CSS `zoom` (not `transform`)
+   so the layout footprint shrinks with the visual — no horizontal scroll
+   on mobile. The fixed 794 px ≈ A4 width @ 96 dpi, matching the on-screen
+   templates' design. */
+.cv-page {
+  width: 794px;
+  zoom: 1;
+}
+@media (max-width: 1023px) { .cv-page { zoom: 0.86; } }
+@media (max-width: 767px)  { .cv-page { zoom: 0.72; } }
+@media (max-width: 479px)  { .cv-page { zoom: 0.55; } }
+
+/* Frame the CV on the Paid screen with a soft elevated card shadow + a
+   pencil-thin hairline. The width hugs the CV (shrink-to-fit), so the
+   container never spans the full grid column with empty dead space. */
+.cv-frame {
+  display: inline-block;
+  border-radius: 16px;
+  background: white;
+  padding: 0;
+  box-shadow: var(--shadow-elevated);
+  border: 1px solid var(--color-border);
+}
+
+/* ── Subtle entrance animation for hero-level elements ──────────────── */
+@keyframes cv-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-rise        { animation: cv-rise .6s cubic-bezier(.16, 1, .3, 1) both; }
+.animate-rise-delay  { animation: cv-rise .6s cubic-bezier(.16, 1, .3, 1) .08s both; }
+.animate-rise-delay2 { animation: cv-rise .6s cubic-bezier(.16, 1, .3, 1) .16s both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise, .animate-rise-delay, .animate-rise-delay2 { animation: none; }
+}
+
+/* ── Anti-print fricção ──────────────────────────────────────────────── */
 @media print {
   body > * { display: none !important; }
   body::before {
@@ -222,89 +404,73 @@ textarea.field { resize: vertical; min-height: 5rem; }
     font-family: var(--font-sans, system-ui);
     font-size: 1.25rem;
     line-height: 1.5;
-    color: #2c1c0b;
+    color: var(--color-ink);
     text-align: center;
-    background: #faf6ef;
+    background: var(--color-surface-0);
   }
 }
 
-/* ── Light-mode bridges ────────────────────────────────────────────────
-   Most components were written with hardcoded white-on-dark utilities
-   (text-white/X, bg-white/X, border-white/X). These rules remap them so
-   they stay legible on parchment in light mode, without touching every
-   component. Tailwind generates the matching classes; we just adjust
-   the colour value via `[data-theme="light"]`.
-
-   The Builder editor is intentionally dark in both modes (productivity
-   surface — see Sessão 20 notes); its sticky nav uses CSS variables so
-   it themes correctly. */
-/* Light-mode browns need a stronger opacity than the equivalent white/X on
-   dark — otherwise icons/labels feel washed out on parchment. The values
-   below were tuned by eye against the Builder's section chips + icon bar. */
-[data-theme="light"] .text-white\/25 { color: rgba(44, 28, 11, 0.35); }
-[data-theme="light"] .text-white\/30 { color: rgba(44, 28, 11, 0.42); }
-[data-theme="light"] .text-white\/35 { color: rgba(44, 28, 11, 0.48); }
-[data-theme="light"] .text-white\/40 { color: rgba(44, 28, 11, 0.55); }
-[data-theme="light"] .text-white\/45 { color: rgba(44, 28, 11, 0.60); }
-[data-theme="light"] .text-white\/50 { color: rgba(44, 28, 11, 0.65); }
-[data-theme="light"] .text-white\/55 { color: rgba(44, 28, 11, 0.70); }
-[data-theme="light"] .text-white\/60 { color: rgba(44, 28, 11, 0.74); }
-[data-theme="light"] .text-white\/65 { color: rgba(44, 28, 11, 0.78); }
-[data-theme="light"] .text-white\/70 { color: rgba(44, 28, 11, 0.80); }
-[data-theme="light"] .text-white\/72 { color: rgba(44, 28, 11, 0.82); }
-[data-theme="light"] .text-white\/75 { color: rgba(44, 28, 11, 0.85); }
-[data-theme="light"] .text-white\/80 { color: rgba(44, 28, 11, 0.88); }
-[data-theme="light"] .text-white\/85 { color: rgba(44, 28, 11, 0.92); }
-[data-theme="light"] .text-white\/90 { color: rgba(44, 28, 11, 0.95); }
+/* ── Light-mode bridges ──────────────────────────────────────────────── */
+[data-theme="light"] .text-white\/25 { color: rgba(28, 19, 8, 0.32); }
+[data-theme="light"] .text-white\/30 { color: rgba(28, 19, 8, 0.40); }
+[data-theme="light"] .text-white\/35 { color: rgba(28, 19, 8, 0.45); }
+[data-theme="light"] .text-white\/40 { color: rgba(28, 19, 8, 0.52); }
+[data-theme="light"] .text-white\/45 { color: rgba(28, 19, 8, 0.58); }
+[data-theme="light"] .text-white\/50 { color: rgba(28, 19, 8, 0.62); }
+[data-theme="light"] .text-white\/55 { color: rgba(28, 19, 8, 0.68); }
+[data-theme="light"] .text-white\/60 { color: rgba(28, 19, 8, 0.72); }
+[data-theme="light"] .text-white\/65 { color: rgba(28, 19, 8, 0.76); }
+[data-theme="light"] .text-white\/70 { color: rgba(28, 19, 8, 0.80); }
+[data-theme="light"] .text-white\/72 { color: rgba(28, 19, 8, 0.82); }
+[data-theme="light"] .text-white\/75 { color: rgba(28, 19, 8, 0.85); }
+[data-theme="light"] .text-white\/80 { color: rgba(28, 19, 8, 0.88); }
+[data-theme="light"] .text-white\/85 { color: rgba(28, 19, 8, 0.92); }
+[data-theme="light"] .text-white\/90 { color: rgba(28, 19, 8, 0.95); }
 [data-theme="light"] .text-white      { color: var(--color-ink); }
 
-[data-theme="light"] .border-white\/5  { border-color: rgba(44, 28, 11, 0.08); }
-[data-theme="light"] .border-white\/8  { border-color: rgba(44, 28, 11, 0.10); }
-[data-theme="light"] .border-white\/10 { border-color: rgba(44, 28, 11, 0.12); }
-[data-theme="light"] .border-white\/15 { border-color: rgba(44, 28, 11, 0.16); }
-[data-theme="light"] .border-white\/18 { border-color: rgba(44, 28, 11, 0.18); }
-[data-theme="light"] .border-white\/20 { border-color: rgba(44, 28, 11, 0.20); }
-[data-theme="light"] .border-white\/30 { border-color: rgba(44, 28, 11, 0.28); }
+[data-theme="light"] .border-white\/5  { border-color: rgba(28, 19, 8, 0.06); }
+[data-theme="light"] .border-white\/8  { border-color: rgba(28, 19, 8, 0.08); }
+[data-theme="light"] .border-white\/10 { border-color: rgba(28, 19, 8, 0.10); }
+[data-theme="light"] .border-white\/15 { border-color: rgba(28, 19, 8, 0.14); }
+[data-theme="light"] .border-white\/18 { border-color: rgba(28, 19, 8, 0.16); }
+[data-theme="light"] .border-white\/20 { border-color: rgba(28, 19, 8, 0.18); }
+[data-theme="light"] .border-white\/30 { border-color: rgba(28, 19, 8, 0.26); }
 
-[data-theme="light"] .bg-white\/\[0\.02\] { background-color: rgba(44, 28, 11, 0.04); }
-[data-theme="light"] .bg-white\/\[0\.03\] { background-color: rgba(44, 28, 11, 0.05); }
-[data-theme="light"] .bg-white\/\[0\.04\] { background-color: rgba(44, 28, 11, 0.06); }
-[data-theme="light"] .bg-white\/\[0\.05\] { background-color: rgba(44, 28, 11, 0.07); }
-[data-theme="light"] .bg-white\/\[0\.06\] { background-color: rgba(44, 28, 11, 0.08); }
-[data-theme="light"] .bg-white\/\[0\.07\] { background-color: rgba(44, 28, 11, 0.10); }
-[data-theme="light"] .bg-white\/\[0\.08\] { background-color: rgba(44, 28, 11, 0.12); }
+[data-theme="light"] .bg-white\/\[0\.02\] { background-color: rgba(28, 19, 8, 0.03); }
+[data-theme="light"] .bg-white\/\[0\.03\] { background-color: rgba(28, 19, 8, 0.04); }
+[data-theme="light"] .bg-white\/\[0\.04\] { background-color: rgba(28, 19, 8, 0.05); }
+[data-theme="light"] .bg-white\/\[0\.05\] { background-color: rgba(28, 19, 8, 0.06); }
+[data-theme="light"] .bg-white\/\[0\.06\] { background-color: rgba(28, 19, 8, 0.08); }
+[data-theme="light"] .bg-white\/\[0\.07\] { background-color: rgba(28, 19, 8, 0.10); }
+[data-theme="light"] .bg-white\/\[0\.08\] { background-color: rgba(28, 19, 8, 0.12); }
 
-[data-theme="light"] .hover\:bg-white\/5:hover     { background-color: rgba(44, 28, 11, 0.06); }
-[data-theme="light"] .hover\:bg-white\/8:hover     { background-color: rgba(44, 28, 11, 0.08); }
-[data-theme="light"] .hover\:bg-white\/10:hover    { background-color: rgba(44, 28, 11, 0.10); }
+[data-theme="light"] .hover\:bg-white\/5:hover  { background-color: rgba(28, 19, 8, 0.05); }
+[data-theme="light"] .hover\:bg-white\/8:hover  { background-color: rgba(28, 19, 8, 0.08); }
+[data-theme="light"] .hover\:bg-white\/10:hover { background-color: rgba(28, 19, 8, 0.10); }
 
-[data-theme="light"] .hover\:border-white\/15:hover { border-color: rgba(44, 28, 11, 0.16); }
-[data-theme="light"] .hover\:border-white\/20:hover { border-color: rgba(44, 28, 11, 0.20); }
-[data-theme="light"] .hover\:border-white\/30:hover { border-color: rgba(44, 28, 11, 0.28); }
+[data-theme="light"] .hover\:border-white\/15:hover { border-color: rgba(28, 19, 8, 0.14); }
+[data-theme="light"] .hover\:border-white\/20:hover { border-color: rgba(28, 19, 8, 0.18); }
+[data-theme="light"] .hover\:border-white\/30:hover { border-color: rgba(28, 19, 8, 0.26); }
 
-[data-theme="light"] .hover\:text-white\/85:hover  { color: rgba(44, 28, 11, 0.92); }
-[data-theme="light"] .hover\:text-white:hover       { color: var(--color-ink); }
+[data-theme="light"] .hover\:text-white\/85:hover { color: rgba(28, 19, 8, 0.92); }
+[data-theme="light"] .hover\:text-white:hover     { color: var(--color-ink); }
 
-/* Black overlays used by the Builder for the preview pane and mobile dialogs.
-   In light mode we want the preview area to read as a soft tan card, not
-   a translucent black smudge. Full-screen overlays (≥/55) stay darker so
-   the modal still pops against the page. */
-[data-theme="light"] .bg-black\/20 { background-color: rgba(44, 28, 11, 0.05); }
-[data-theme="light"] .bg-black\/30 { background-color: rgba(44, 28, 11, 0.07); }
-[data-theme="light"] .bg-black\/40 { background-color: rgba(44, 28, 11, 0.40); }
+[data-theme="light"] .bg-black\/20 { background-color: rgba(28, 19, 8, 0.05); }
+[data-theme="light"] .bg-black\/30 { background-color: rgba(28, 19, 8, 0.07); }
+[data-theme="light"] .bg-black\/40 { background-color: rgba(28, 19, 8, 0.40); }
 [data-theme="light"] .bg-black\/55 { background-color: rgba(255, 250, 240, 0.78); }
-[data-theme="light"] .bg-black\/55 > * { color: var(--color-ink) !important; border-color: rgba(44, 28, 11, 0.30) !important; }
-[data-theme="light"] .bg-black\/80 { background-color: rgba(44, 28, 11, 0.78); }
+[data-theme="light"] .bg-black\/55 > * { color: var(--color-ink) !important; border-color: rgba(28, 19, 8, 0.28) !important; }
+[data-theme="light"] .bg-black\/80 { background-color: rgba(28, 19, 8, 0.78); }
 
-/* Warning bar (Builder fill-name banner) — amber on amber is unreadable in
-   light. Push text to a deep amber and bump the border. */
 [data-theme="light"] .text-amber-200\/90 { color: rgba(120, 53, 15, 0.95); }
 [data-theme="light"] .bg-amber-500\/10   { background-color: rgba(245, 158, 11, 0.16); }
-[data-theme="light"] .border-amber-400\/15 { border-color: rgba(217, 119, 6, 0.45); }
+[data-theme="light"] .border-amber-400\/15 { border-color: rgba(217, 119, 6, 0.40); }
 [data-theme="light"] .text-amber-300\/85  { color: rgba(146, 64, 14, 0.95); }
 [data-theme="light"] .text-amber-100\/85  { color: rgba(120, 53, 15, 0.95); }
+[data-theme="light"] .text-amber-100      { color: rgba(120, 53, 15, 0.95); }
+[data-theme="light"] .bg-amber-600\/30    { background-color: rgba(217, 119, 6, 0.22); }
+[data-theme="light"] .border-amber-400\/40 { border-color: rgba(217, 119, 6, 0.50); }
 
-/* Section completion badge — keep emerald readable on parchment. */
 [data-theme="light"] .bg-emerald-400\/15 { background-color: rgba(16, 185, 129, 0.18); }
 [data-theme="light"] .text-emerald-300   { color: rgba(6, 95, 70, 0.95); }
 [data-theme="light"] .text-emerald-200   { color: rgba(6, 78, 59, 0.95); }
@@ -315,9 +481,7 @@ textarea.field { resize: vertical; min-height: 5rem; }
 [data-theme="light"] .bg-emerald-400\/\[0\.06\] { background-color: rgba(16, 185, 129, 0.10); }
 [data-theme="light"] .bg-emerald-500\/\[0\.07\] { background-color: rgba(16, 185, 129, 0.10); }
 
-/* Red — used by error states and tampered-signature notices. */
 [data-theme="light"] .text-red-300       { color: rgba(153, 27, 27, 0.95); }
 [data-theme="light"] .text-red-200       { color: rgba(127, 29, 29, 0.95); }
 [data-theme="light"] .bg-red-500\/10     { background-color: rgba(220, 38, 38, 0.10); }
 [data-theme="light"] .border-red-400\/30 { border-color: rgba(220, 38, 38, 0.40); }
-

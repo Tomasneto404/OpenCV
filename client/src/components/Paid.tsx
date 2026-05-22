@@ -106,7 +106,9 @@ export function Paid({ cv, sessionId, cvId, initialMeta, onMetaUpdate, onReset, 
           </button>
         </div>
 
-        <div className="bg-black/30 rounded-2xl p-4 lg:p-6 overflow-auto max-h-[calc(100vh-160px)]">
+        {/* Preview is shrink-to-fit — the .cv-page class drives sizing.
+            No scrim around it: the cv-surface inner shadow does the work. */}
+        <div className="flex justify-center items-start overflow-auto max-h-[calc(100vh-140px)] py-4">
           <Preview cv={cv} paid />
         </div>
       </div>

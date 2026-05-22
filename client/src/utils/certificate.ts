@@ -2,19 +2,21 @@
  * Read, validate and prepare a PDF certificate before adding it to the CV.
  *
  * The flow:
- *   1. Validate type (must be application/pdf) + size (<= 5 MB).
+ *   1. Validate type (must be application/pdf) + size (<= 10 MB).
  *   2. Open with pdf-lib to ensure it's a real PDF and read pageCount.
  *      Encrypted/password-protected PDFs throw — we surface a friendly error.
  *   3. Compute sha256 over the bytes (so duplicates are detectable).
  *   4. Convert to base64 data URL for storage in the CV JSON.
  *
- * Caller is responsible for the total-size cap (15 MB across all certs).
+ * No count cap from Sessão 24 — only a 50 MB combined cap (browser
+ * localStorage realistically saves up to ~5 MB, above that we warn but
+ * don't block; the server stops accepting at 50 MB).
  */
 import { newId, type CertificateItem } from '../types';
 
-export const CERT_MAX_BYTES = 5 * 1024 * 1024;          // 5 MB per file
-export const CERT_TOTAL_CAP = 15 * 1024 * 1024;         // 15 MB combined
-export const CERT_MAX_COUNT = 5;
+export const CERT_MAX_BYTES = 10 * 1024 * 1024;         // 10 MB per file
+export const CERT_TOTAL_CAP = 50 * 1024 * 1024;         // 50 MB combined
+export const CERT_LOCALSTORAGE_WARN = 5 * 1024 * 1024;  // soft warn threshold
 
 export type CertErrorCode = 'too-large' | 'not-pdf' | 'encrypted' | 'bad-pdf';
 
@@ -32,7 +34,7 @@ export async function processCertificate(file: File, name: string, description =
     throw new CertError('not-pdf', 'O ficheiro tem de ser PDF.');
   }
   if (file.size > CERT_MAX_BYTES) {
-    throw new CertError('too-large', 'Ficheiro maior que 5 MB.');
+    throw new CertError('too-large', 'Ficheiro maior que 10 MB.');
   }
 
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -62,6 +64,7 @@ export async function processCertificate(file: File, name: string, description =
     bytes: bytes.byteLength,
     pageCount,
     hash,
+    framed: true,
   };
 }
 

@@ -1,15 +1,19 @@
 /**
- * Landing page — public entry point. Acts as marketing surface + dual CTA
- * (start new CV vs. update an existing one) + routing into builder/support/faq.
+ * Landing page — public marketing surface.
  *
- * Localised: all visible strings come from the i18n dictionary.
+ * Layout (Apple-ish in feel):
+ *   - Sticky frosted nav (nav-glass), 64 px tall
+ *   - Hero with generous whitespace, large mascot, soft entrance animation
+ *   - Dual CTA pricing cards with hover lift
+ *   - Template gallery (6 cards) with subtle elevation on hover
+ *   - "How it works" three-step section
+ *   - Short FAQ teaser
+ *   - Structured footer with three columns (Product / Support / Legal)
+ *     plus a copyright row and a small icon for theme/locale recap
  *
- * Update flow gate:
- *   - JSON file → loaded as "update" mode (€0.50).
- *   - PDF with valid signature → loaded as "update".
- *   - PDF without signature OR with invalid signature → blocked from "update",
- *     user can choose to start fresh with the content at "new" price (€1).
- *     This rule is enforced in App.onLoadConfig via the `sourceVerified` flag.
+ * Update-flow gate:
+ *   - Verified (server-decrypted PDF or original JSON) → eligible €0.50.
+ *   - Otherwise → toast and route to Builder at full €1.
  */
 import { useRef, useState, type ReactNode } from 'react';
 import type { CVData, CVMeta } from '../types';
@@ -23,10 +27,6 @@ import { PRICES, formatPrice } from '../utils/format';
 
 interface Props {
   onNew: () => void;
-  /**
-   * Called when the user uploads a JSON or PDF.
-   * `opts.verified` true ⇒ eligible for the €0.50 update tier.
-   */
   onLoadConfig: (cv: CVData, opts?: { verified?: boolean; meta?: CVMeta; prevPayloadB64?: string }) => void;
   onSample: () => void;
   onNavigate: (path: string) => void;
@@ -41,11 +41,6 @@ export function Landing({ onNew, onLoadConfig, onSample, onNavigate }: Props) {
   const priceNew    = formatPrice(PRICES.newCents,    locale);
   const priceUpdate = formatPrice(PRICES.updateCents, locale);
 
-  /**
-   * Hand off the uploaded file to the server's /decode-pdf (PDFs) or parse
-   * inline (JSON). The server returns `verified` + meta + an opaque cipher
-   * blob; we just propagate them up.
-   */
   const handleFile = async (file: File | null) => {
     if (!file) return;
     setBusy(true);
@@ -72,46 +67,63 @@ export function Landing({ onNew, onLoadConfig, onSample, onNavigate }: Props) {
   };
 
   return (
-    <div className="min-h-screen">
-      <nav className="px-6 py-4 flex items-center justify-between max-w-6xl mx-auto gap-3">
-        <BrandMark withWordmark size={44} />
-        <div className="flex items-center gap-4 sm:gap-5">
-          <a href="#how" className="hidden sm:inline text-sm text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] transition">{t('landing.nav.howItWorks')}</a>
-          <a href="/faq"     onClick={(e) => { e.preventDefault(); onNavigate('/faq'); }}     className="text-sm text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] transition">{t('landing.nav.faq')}</a>
-          <a href="/support" onClick={(e) => { e.preventDefault(); onNavigate('/support'); }} className="text-sm text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] transition">{t('landing.nav.support')}</a>
-          <LanguageSwitcher />
-          <ThemeToggle />
+    <div className="min-h-screen flex flex-col">
+      {/* ── Sticky nav ─────────────────────────────────────────────── */}
+      <nav className="nav-glass sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between gap-3">
+          <BrandMark withWordmark size={36} />
+          <div className="flex items-center gap-1 sm:gap-3">
+            <a href="#how" className="hidden sm:inline-flex h-9 items-center px-3 text-sm text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] transition">
+              {t('landing.nav.howItWorks')}
+            </a>
+            <a href="/faq" onClick={(e) => { e.preventDefault(); onNavigate('/faq'); }} className="inline-flex h-9 items-center px-3 text-sm text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] transition">
+              {t('landing.nav.faq')}
+            </a>
+            <a href="/support" onClick={(e) => { e.preventDefault(); onNavigate('/support'); }} className="inline-flex h-9 items-center px-3 text-sm text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] transition">
+              {t('landing.nav.support')}
+            </a>
+            <span className="hidden sm:inline-block w-px h-5 bg-[color:var(--color-border)] mx-1" />
+            <LanguageSwitcher />
+            <ThemeToggle />
+          </div>
         </div>
       </nav>
 
-      {/* Hero */}
-      <header className="px-6 pt-8 pb-16 text-center max-w-3xl mx-auto">
-        {/* Brand mascot — large hero rendition. Tells the user instantly what
-            CVeaver is and gives the page a strong identity anchor. */}
-        <div className="flex justify-center mb-6">
-          <BrandMark size={128} />
+      {/* ── Hero ───────────────────────────────────────────────────── */}
+      <header className="px-6 pt-20 pb-24 sm:pt-28 sm:pb-32 text-center max-w-3xl mx-auto">
+        <div className="flex justify-center mb-8 animate-rise">
+          <BrandMark size={144} />
         </div>
-        <div className="inline-flex items-center gap-2 text-xs text-white/65 mb-6 px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.03]">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> {t('landing.hero.badge')}
+
+        <div
+          className="inline-flex items-center gap-2 text-[12.5px] font-medium text-[color:var(--color-ink-muted)] mb-7 px-3 py-1.5 rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-glass-bg)] backdrop-blur animate-rise"
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-accent-500)]" />
+          {t('landing.hero.badge')}
         </div>
-        <h1 className="text-5xl sm:text-6xl font-bold tracking-tight leading-[1.05]" style={{ fontFamily: 'Fraunces, serif' }}>
+
+        <h1 className="text-[44px] sm:text-[64px] font-bold leading-[1.04] tracking-[-0.025em] animate-rise" style={{ fontFamily: 'Fraunces, serif' }}>
           {t('landing.hero.title')}{' '}
-          <span className="bg-clip-text text-transparent bg-gradient-to-br from-brand-300 to-accent-400">{t('landing.hero.titleAccent')}</span>.
+          <span className="bg-clip-text text-transparent bg-gradient-to-br from-[color:var(--color-brand-400)] to-[color:var(--color-accent-500)]">
+            {t('landing.hero.titleAccent')}
+          </span>
+          <span className="text-[color:var(--color-ink)]">.</span>
         </h1>
-        <p className="mt-6 text-white/70 text-lg leading-relaxed max-w-2xl mx-auto">
+
+        <p className="mt-7 text-[17px] sm:text-[18px] leading-[1.55] text-[color:var(--color-ink-muted)] max-w-2xl mx-auto animate-rise-delay">
           {t('landing.hero.subtitle', { price: priceNew, updatePrice: priceUpdate })}
         </p>
 
-        <div className="mt-8 flex flex-col sm:flex-row gap-3 items-center justify-center">
-          <button onClick={onNew} className="btn-primary px-6 py-3 text-base">
+        <div className="mt-9 flex flex-col sm:flex-row gap-3 items-center justify-center animate-rise-delay">
+          <button onClick={onNew} className="btn-primary px-6 text-[15px]">
             {t('landing.hero.ctaCreate', { price: priceNew })}
           </button>
-          <button onClick={onSample} className="btn-ghost px-6 py-3 text-base">
+          <button onClick={onSample} className="btn-ghost px-6 text-[15px]">
             {t('landing.hero.ctaSample')}
           </button>
         </div>
 
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-white/45">
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[12.5px] text-[color:var(--color-ink-faint)] animate-rise-delay2">
           <Feat>{t('landing.hero.feature1')}</Feat>
           <Feat>{t('landing.hero.feature2')}</Feat>
           <Feat>{t('landing.hero.feature3')}</Feat>
@@ -119,40 +131,58 @@ export function Landing({ onNew, onLoadConfig, onSample, onNavigate }: Props) {
         </div>
       </header>
 
-      {/* Pricing CTA */}
+      {/* ── Pricing dual-CTA ───────────────────────────────────────── */}
       <section className="px-6 max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
-        <button onClick={onNew} className="glass rounded-2xl p-7 text-left hover:bg-white/[0.07] transition group">
+        <button onClick={onNew} className="group glass rounded-2xl p-7 text-left transition-all duration-300 ease-out hover:-translate-y-[3px]" style={{ boxShadow: 'var(--shadow-soft)' }} onMouseEnter={(e) => (e.currentTarget.style.boxShadow = 'var(--shadow-elevated)')} onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'var(--shadow-soft)')}>
           <div className="flex items-center justify-between">
-            <span className="text-sm uppercase tracking-wider text-white/50">{t('landing.pricing.newLabel')}</span>
-            <span className="text-xl font-bold text-white">{priceNew}</span>
+            <span className="text-[11.5px] uppercase tracking-[0.18em] text-[color:var(--color-ink-muted)] font-semibold">
+              {t('landing.pricing.newLabel')}
+            </span>
+            <span className="text-xl font-bold tracking-tight">{priceNew}</span>
           </div>
-          <h3 className="mt-3 text-2xl font-semibold">{t('landing.pricing.newTitle')}</h3>
-          <p className="mt-2 text-sm text-white/65 leading-relaxed">{t('landing.pricing.newBody')}</p>
-          <span className="mt-5 inline-flex items-center gap-1 text-brand-300 text-sm font-medium group-hover:gap-2 transition-all">
+          <h3 className="mt-4 text-[22px] font-semibold tracking-tight">{t('landing.pricing.newTitle')}</h3>
+          <p className="mt-2 text-[14.5px] text-[color:var(--color-ink-muted)] leading-relaxed">
+            {t('landing.pricing.newBody')}
+          </p>
+          <span className="mt-5 inline-flex items-center gap-1 text-[color:var(--color-brand-500)] text-sm font-medium transition-all duration-200 group-hover:gap-2">
             {t('landing.pricing.newCta')}
           </span>
         </button>
 
-        <div className="glass rounded-2xl p-7 text-left">
+        <div
+          className="glass rounded-2xl p-7 text-left transition-all duration-300 ease-out hover:-translate-y-[3px]"
+          style={{ boxShadow: 'var(--shadow-soft)' }}
+          onMouseEnter={(e) => (e.currentTarget.style.boxShadow = 'var(--shadow-elevated)')}
+          onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'var(--shadow-soft)')}
+        >
           <div className="flex items-center justify-between">
-            <span className="text-sm uppercase tracking-wider text-white/50">{t('landing.pricing.updateLabel')}</span>
-            <span className="text-xl font-bold text-white">{priceUpdate}</span>
+            <span className="text-[11.5px] uppercase tracking-[0.18em] text-[color:var(--color-ink-muted)] font-semibold">
+              {t('landing.pricing.updateLabel')}
+            </span>
+            <span className="text-xl font-bold tracking-tight">{priceUpdate}</span>
           </div>
-          <h3 className="mt-3 text-2xl font-semibold">{t('landing.pricing.updateTitle')}</h3>
-          <p className="mt-2 text-sm text-white/65 leading-relaxed">{t('landing.pricing.updateBody')}</p>
-          <input ref={fileRef} type="file" accept="application/pdf,application/json,.pdf,.json" hidden
-            onChange={(e) => handleFile(e.target.files?.[0] ?? null)} />
+          <h3 className="mt-4 text-[22px] font-semibold tracking-tight">{t('landing.pricing.updateTitle')}</h3>
+          <p className="mt-2 text-[14.5px] text-[color:var(--color-ink-muted)] leading-relaxed">
+            {t('landing.pricing.updateBody')}
+          </p>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/pdf,application/json,.pdf,.json"
+            hidden
+            onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+          />
           <button className="btn-ghost mt-5" onClick={() => fileRef.current?.click()} disabled={busy}>
             {busy ? t('landing.pricing.updateBusy') : t('landing.pricing.updateCta')}
           </button>
         </div>
       </section>
 
-      {/* Templates teaser */}
-      <section className="px-6 mt-20 max-w-5xl mx-auto">
-        <div className="text-center mb-10">
-          <p className="text-xs uppercase tracking-[0.2em] text-white/45">{t('landing.templates.kicker')}</p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, serif' }}>
+      {/* ── Templates gallery ──────────────────────────────────────── */}
+      <section className="px-6 mt-28 max-w-5xl mx-auto">
+        <div className="text-center mb-12">
+          <p className="section-kicker">{t('landing.templates.kicker')}</p>
+          <h2 className="mt-3 text-[32px] sm:text-[40px] font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, serif' }}>
             {t('landing.templates.title')}
           </h2>
         </div>
@@ -170,84 +200,177 @@ export function Landing({ onNew, onLoadConfig, onSample, onNavigate }: Props) {
         </div>
       </section>
 
-      {/* How it works */}
-      <section id="how" className="px-6 mt-24 max-w-4xl mx-auto">
-        <div className="text-center mb-10">
-          <p className="text-xs uppercase tracking-[0.2em] text-white/45">{t('landing.how.kicker')}</p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, serif' }}>{t('landing.how.title')}</h2>
+      {/* ── How it works ───────────────────────────────────────────── */}
+      <section id="how" className="px-6 mt-32 max-w-4xl mx-auto">
+        <div className="text-center mb-12">
+          <p className="section-kicker">{t('landing.how.kicker')}</p>
+          <h2 className="mt-3 text-[32px] sm:text-[40px] font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, serif' }}>
+            {t('landing.how.title')}
+          </h2>
         </div>
         <ol className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Step n={1} title={t('landing.how.step1Title')} body={t('landing.how.step1Body')} />
-          <Step n={2} title={t('landing.how.step2Title', { price: priceNew })} body={t('landing.how.step2Body')} />
-          <Step n={3} title={t('landing.how.step3Title')} body={t('landing.how.step3Body')} />
+          <Step n={1} title={t('landing.how.step1Title')}                          body={t('landing.how.step1Body')} />
+          <Step n={2} title={t('landing.how.step2Title', { price: priceNew })}     body={t('landing.how.step2Body')} />
+          <Step n={3} title={t('landing.how.step3Title')}                          body={t('landing.how.step3Body')} />
         </ol>
       </section>
 
-      {/* FAQ teaser */}
-      <section className="px-6 mt-24 max-w-3xl mx-auto">
-        <div className="text-center mb-8">
-          <p className="text-xs uppercase tracking-[0.2em] text-white/45">{t('landing.faqShort.kicker')}</p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, serif' }}>{t('landing.faqShort.title')}</h2>
+      {/* ── FAQ teaser ─────────────────────────────────────────────── */}
+      <section className="px-6 mt-32 max-w-3xl mx-auto">
+        <div className="text-center mb-10">
+          <p className="section-kicker">{t('landing.faqShort.kicker')}</p>
+          <h2 className="mt-3 text-[32px] sm:text-[40px] font-semibold tracking-tight" style={{ fontFamily: 'Fraunces, serif' }}>
+            {t('landing.faqShort.title')}
+          </h2>
         </div>
         <div className="space-y-3">
           <Faq q={t('landing.faqShort.q1')}>{t('landing.faqShort.a1')}</Faq>
           <Faq q={t('landing.faqShort.q2')}>{t('landing.faqShort.a2')}</Faq>
           <Faq q={t('landing.faqShort.q3')}>{t('landing.faqShort.a3', { updatePrice: priceUpdate })}</Faq>
         </div>
-        <div className="text-center mt-5">
-          <a href="/faq" onClick={(e) => { e.preventDefault(); onNavigate('/faq'); }} className="text-sm text-brand-300 hover:text-brand-200 underline underline-offset-4">
+        <div className="text-center mt-6">
+          <a
+            href="/faq"
+            onClick={(e) => { e.preventDefault(); onNavigate('/faq'); }}
+            className="inline-flex items-center gap-1 text-sm font-medium text-[color:var(--color-brand-500)] hover:text-[color:var(--color-brand-600)] transition"
+          >
             {t('landing.faqShort.seeAll')}
           </a>
         </div>
       </section>
 
-      <footer className="mt-24 mb-8 text-xs text-white/40 text-center px-6 space-x-3">
-        <span>{t('landing.footer')}</span>
-        <span>·</span>
-        <a href="/terms" onClick={(e) => { e.preventDefault(); onNavigate('/terms'); }} className="underline">{t('landing.nav.terms')}</a>
+      {/* ── Footer ─────────────────────────────────────────────────── */}
+      <footer className="mt-32 border-t border-[color:var(--color-border)]">
+        <div className="max-w-6xl mx-auto px-6 py-14">
+          {/* Top row: brand on left, columns on right */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_2fr] gap-10">
+            <div className="space-y-3">
+              <BrandMark withWordmark size={32} />
+              <p className="text-[13.5px] text-[color:var(--color-ink-muted)] leading-relaxed max-w-xs">
+                {t('landing.footerNav.tagline')}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-8">
+              <FooterCol title={t('landing.footerNav.product.title')}>
+                <FooterLink onClick={onNew}>{t('landing.footerNav.product.create')}</FooterLink>
+                <FooterLink onClick={() => fileRef.current?.click()}>{t('landing.footerNav.product.update')}</FooterLink>
+                <FooterLink href="#how">{t('landing.footerNav.product.templates')}</FooterLink>
+              </FooterCol>
+
+              <FooterCol title={t('landing.footerNav.support.title')}>
+                <FooterLink onClick={() => onNavigate('/faq')}>{t('landing.nav.faq')}</FooterLink>
+                <FooterLink onClick={() => onNavigate('/support')}>{t('landing.nav.support')}</FooterLink>
+              </FooterCol>
+
+              <FooterCol title={t('landing.footerNav.legal.title')}>
+                <FooterLink onClick={() => onNavigate('/terms')}>{t('landing.nav.terms')}</FooterLink>
+                <FooterLink disabledHint={t('landing.footerNav.legal.comingSoon')}>
+                  {t('landing.footerNav.legal.privacy')}
+                </FooterLink>
+              </FooterCol>
+            </div>
+          </div>
+
+          {/* Bottom row */}
+          <div className="mt-12 pt-6 border-t border-[color:var(--color-border)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <p className="text-[12.5px] text-[color:var(--color-ink-faint)]">
+              {t('landing.footerNav.copyright', { year: String(new Date().getFullYear()) })}
+            </p>
+            <p className="text-[12.5px] text-[color:var(--color-ink-faint)]">
+              {t('landing.footerNav.craftedIn')}
+            </p>
+          </div>
+        </div>
       </footer>
     </div>
   );
 }
 
 function Feat({ children }: { children: ReactNode }) {
-  return <span className="inline-flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-white/30" />{children}</span>;
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="h-1 w-1 rounded-full bg-[color:var(--color-ink-faint)]" />
+      {children}
+    </span>
+  );
 }
 
 function Step({ n, title, body }: { n: number; title: string; body: string }) {
   return (
-    <li className="glass rounded-2xl p-5">
+    <li className="glass rounded-2xl p-6 transition-all duration-300 hover:-translate-y-[2px]" style={{ boxShadow: 'var(--shadow-soft)' }}>
       <div className="flex items-center gap-3">
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-accent-500 text-white text-sm font-semibold">{n}</span>
-        <h3 className="text-lg font-semibold">{title}</h3>
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--color-brand-500)] text-white text-[13px] font-semibold">
+          {n}
+        </span>
+        <h3 className="text-[17px] font-semibold tracking-tight">{title}</h3>
       </div>
-      <p className="mt-3 text-sm text-white/65 leading-relaxed">{body}</p>
+      <p className="mt-3 text-[14px] text-[color:var(--color-ink-muted)] leading-relaxed">{body}</p>
     </li>
   );
 }
 
 function Faq({ q, children }: { q: string; children: ReactNode }) {
   return (
-    <details className="group rounded-xl border border-white/10 bg-white/[0.02] open:bg-white/[0.04] transition">
-      <summary className="cursor-pointer list-none px-4 py-3.5 flex items-center justify-between gap-4 text-[15px] font-medium">
+    <details className="group rounded-2xl border border-[color:var(--color-border)] bg-[color:var(--color-glass-bg)] open:border-[color:var(--color-border-strong)] transition-colors">
+      <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between gap-4 text-[15px] font-medium">
         <span>{q}</span>
-        <span className="text-white/40 group-open:rotate-45 transition-transform">+</span>
+        <span className="text-[color:var(--color-ink-faint)] transition-transform duration-200 group-open:rotate-45 text-lg leading-none">+</span>
       </summary>
-      <div className="px-4 pb-4 text-sm text-white/70 leading-relaxed">{children}</div>
+      <div className="px-5 pb-5 text-[14px] text-[color:var(--color-ink-muted)] leading-relaxed">{children}</div>
     </details>
   );
 }
 
-/**
- * Decorative mini-CV — purely SVG/Tailwind, no real CV data. Used in the
- * landing template gallery so visitors get a feel for the styles.
- *
- * The `comingSoon` overlay deliberately covers the mini so visitors can't
- * mistake a placeholder for a real template option.
- */
+/* ── Footer helpers ────────────────────────────────────────────────── */
+function FooterCol({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div>
+      <p className="footer-col-title">{title}</p>
+      <ul className="space-y-1.5">{children}</ul>
+    </div>
+  );
+}
+
+interface FooterLinkProps {
+  children: ReactNode;
+  onClick?: () => void;
+  href?: string;
+  disabledHint?: string;
+}
+
+function FooterLink({ children, onClick, href, disabledHint }: FooterLinkProps) {
+  if (disabledHint) {
+    return (
+      <li>
+        <span className="footer-link" aria-disabled="true" title={disabledHint}>
+          {children} <span className="ml-1 text-[10px] uppercase tracking-wider opacity-70">· {disabledHint}</span>
+        </span>
+      </li>
+    );
+  }
+  return (
+    <li>
+      <a
+        href={href ?? '#'}
+        onClick={onClick ? (e) => { e.preventDefault(); onClick(); } : undefined}
+        className="footer-link"
+      >
+        {children}
+      </a>
+    </li>
+  );
+}
+
+/* ── Mini-template previews (decorative SVG, no real CV data) ──────── */
 function TemplatePreview({ label, tagline, kind, comingSoon }: { label: string; tagline: string; kind: 'modern' | 'classic' | 'minimal' | 'creative' | 'executive' | 'soon'; comingSoon?: boolean }) {
   return (
-    <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-white/[0.03] hover:bg-white/[0.05] transition">
+    <div
+      className="relative rounded-2xl overflow-hidden border border-[color:var(--color-border)] bg-[color:var(--color-surface-1)] transition-all duration-300 hover:-translate-y-[3px]"
+      style={{ boxShadow: 'var(--shadow-soft)' }}
+      onMouseEnter={(e) => (e.currentTarget.style.boxShadow = 'var(--shadow-elevated)')}
+      onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'var(--shadow-soft)')}
+    >
       <div className="aspect-[3/4] bg-white text-[#0f172a] text-[7px] leading-tight overflow-hidden">
         {kind === 'modern'    && <MiniModern />}
         {kind === 'classic'   && <MiniClassic />}
@@ -256,13 +379,13 @@ function TemplatePreview({ label, tagline, kind, comingSoon }: { label: string; 
         {kind === 'executive' && <MiniExecutive />}
         {kind === 'soon'      && <MiniSoon />}
       </div>
-      <div className="px-3 py-2.5 border-t border-white/10">
-        <p className="text-sm font-medium text-white">{label}</p>
-        <p className="text-[11px] text-white/55">{tagline}</p>
+      <div className="px-4 py-3 border-t border-[color:var(--color-border)]">
+        <p className="text-[14px] font-medium tracking-tight text-[color:var(--color-ink)]">{label}</p>
+        <p className="text-[11.5px] text-[color:var(--color-ink-muted)]">{tagline}</p>
       </div>
       {comingSoon && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/55 backdrop-blur-[2px]">
-          <span className="text-xs uppercase tracking-[0.25em] text-white/90 font-semibold border border-white/30 rounded-full px-3 py-1.5">
+          <span className="text-[11px] uppercase tracking-[0.25em] text-white/90 font-semibold border border-white/30 rounded-full px-3 py-1.5">
             {tagline}
           </span>
         </div>

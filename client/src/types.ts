@@ -97,6 +97,17 @@ export interface CVData {
   certificates?: CertificateItem[];
 }
 
+/**
+ * Per-CV metadata returned by the server. The client only reads it — never
+ * mutates. The server-side increment of editCount lives in /pdf/:sessionId.
+ */
+export interface CVMeta {
+  createdAt: string;
+  lastEditAt: string;
+  editCount: number;
+  lastSentEmail: string | null;
+}
+
 export function newId(): string {
   return Math.random().toString(36).slice(2, 9);
 }

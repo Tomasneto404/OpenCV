@@ -28,7 +28,17 @@
       "Bash(curl -fsS http://localhost:3001/health)",
       "Bash(curl -fsS -X POST http://localhost:3001/verify-pdf -H 'Content-Type: application/json' -d '{\"cv\":{\"version\":1,\"template\":\"modern\",\"accentColor\":\"#abc\",\"personal\":{\"fullName\":\"X\",\"headline\":\"\",\"email\":\"\",\"phone\":\"\",\"location\":\"\",\"website\":\"\",\"linkedin\":\"\",\"github\":\"\"},\"summary\":\"\",\"experience\":[],\"education\":[],\"skills\":[],\"languages\":[],\"projects\":[]},\"signature\":null}')",
       "Bash(git init *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(curl -sI 'http://localhost:3001/pdf/cs_test_unknown?cv_id=abc')",
+      "Bash(curl -s -X POST http://localhost:3001/dev/pdf -H 'Content-Type: application/json' -d '{\"cv\":{\"version\":1,\"template\":\"classic\",\"accentColor\":\"#7f1d1d\",\"personal\":{\"fullName\":\"Paywall Test\",\"headline\":\"\",\"email\":\"\",\"phone\":\"\",\"location\":\"\",\"website\":\"\",\"linkedin\":\"\",\"github\":\"\"},\"summary\":\"\",\"experience\":[],\"education\":[],\"skills\":[],\"languages\":[],\"projects\":[],\"certificates\":[]}}' -o /tmp/dev-pdf-test.pdf)",
+      "Read(//tmp/**)",
+      "Bash(curl -sI 'http://localhost:3001/pdf/cs_test_unknown')",
+      "Bash(curl -s -o /dev/null -w '  attempt __TRACKED_VAR__: %{http_code}\\\\n' http://localhost:3001/pdf/cs_test_unknown?cv_id=abc)",
+      "Bash(curl -s -X POST http://localhost:3001/dev/pdf -H 'Content-Type: application/json' -d '{\"cv\":{\"version\":1,\"template\":\"modern\",\"accentColor\":\"#1e3a8a\",\"personal\":{\"fullName\":\"Crypto Test\",\"headline\":\"\",\"email\":\"\",\"phone\":\"\",\"location\":\"\",\"website\":\"\",\"linkedin\":\"\",\"github\":\"\"},\"summary\":\"\",\"experience\":[],\"education\":[],\"skills\":[],\"languages\":[],\"projects\":[],\"certificates\":[]}}' -o /tmp/crypto-test.pdf)",
+      "Bash(curl -s -X POST http://localhost:3001/decode-pdf -H 'Content-Type: application/pdf' --data-binary @/tmp/crypto-test.pdf)",
+      "Bash(xxd /tmp/rt-test.pdf)",
+      "Bash(curl -s http://localhost:5173/)"
     ]
   }
 }

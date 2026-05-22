@@ -1,74 +1,56 @@
 /**
  * Support page (route: /support — /verify is an alias).
  *
- * Flow:
- *   1. User drops a CVeaver PDF.
- *   2. We extract the embedded payload and ask the server to verify the
- *      Ed25519 signature.
- *   3. If valid → show signature details and a complaint form. The complaint
- *      form requires the submitter's email to match cv.personal.email — this
- *      keeps strangers from filing complaints on someone else's PDF.
- *   4. If invalid / unsigned → show a clear error and stop.
+ * Simplified in Sessão 22 — no signature/keyId/hash exposed. The user
+ * drops a PDF and sees a boolean: "verified" (can open complaint) or
+ * "not verified" (stop). Internally the server runs Ed25519 verification
+ * over the encrypted payload, but the result that leaves the server is
+ * only `{ valid: true|false }`.
  *
- * The complaint POST hits /support; the server logs it and stores it in
- * data/complaints.json (see server/index.js).
+ *   1. User drops a PDF.
+ *   2. Server decrypts the embedded payload and verifies the internal
+ *      signature against the CV body.
+ *   3. If valid → show the complaint form. The submitter's email must
+ *      match cv.personal.email so a stranger can't file a complaint on
+ *      someone else's CV.
+ *   4. If not valid → show a clean error and stop.
  */
 import { useRef, useState } from 'react';
 import { loadConfigFromFile, ConfigLoadError } from '../utils/loadConfig';
-import { verifyPdfPayload, submitComplaint } from '../api';
+import { submitComplaint } from '../api';
 import { useT } from '../i18n';
 import { BrandMark } from './BrandMark';
 import { ThemeToggle } from './ThemeToggle';
 import type { CVData } from '../types';
-import type { SignatureEnvelope } from '../utils/pdfEnhance';
 
 interface Props { onBack: () => void; }
 
 type Status =
   | { kind: 'idle' }
   | { kind: 'busy' }
-  | { kind: 'valid';    cv: CVData; signature: SignatureEnvelope; signedAt: string | null; keyId: string | null; hash: string | null }
-  | { kind: 'invalid';  cv: CVData; signature?: SignatureEnvelope; reason: string }
-  | { kind: 'unsigned'; cv: CVData }
-  | { kind: 'error';    message: string };
+  | { kind: 'verified';    cv: CVData }
+  | { kind: 'unverified' }
+  | { kind: 'error';       message: string };
 
 export function Support({ onBack }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
-  const { t, locale } = useT();
+  const { t } = useT();
 
-  /** Handle a dropped/picked file: extract → verify → set status accordingly. */
   const handleFile = async (file: File | null) => {
     if (!file) return;
     setStatus({ kind: 'busy' });
     try {
       const loaded = await loadConfigFromFile(file);
       if (loaded.source !== 'pdf') {
-        setStatus({ kind: 'error', message: 'Carrega o PDF assinado, não o .json.' });
+        setStatus({ kind: 'error', message: t('support.errorPdfOnly') });
         return;
       }
-      if (!loaded.signature) {
-        setStatus({ kind: 'unsigned', cv: loaded.cv });
-        return;
-      }
-      const result = await verifyPdfPayload(loaded.cv, loaded.signature);
-      if (result.valid) {
-        setStatus({
-          kind: 'valid',
-          cv: loaded.cv,
-          signature: loaded.signature,
-          signedAt: result.signedAt ?? null,
-          keyId:    result.keyId    ?? null,
-          hash:     result.hash     ?? null,
-        });
+      if (loaded.verified) {
+        setStatus({ kind: 'verified', cv: loaded.cv });
       } else {
-        setStatus({
-          kind: 'invalid',
-          cv: loaded.cv,
-          signature: loaded.signature,
-          reason: result.reason ?? 'unknown',
-        });
+        setStatus({ kind: 'unverified' });
       }
     } catch (err) {
       const msg = err instanceof ConfigLoadError ? err.message : (err as Error).message;
@@ -121,14 +103,14 @@ export function Support({ onBack }: Props) {
         </div>
 
         <div className="mt-8">
-          <Result status={status} locale={locale} />
+          <Result status={status} />
         </div>
       </div>
     </div>
   );
 }
 
-function Result({ status, locale }: { status: Status; locale: string }) {
+function Result({ status }: { status: Status }) {
   const { t } = useT();
   if (status.kind === 'idle') return null;
   if (status.kind === 'busy') return <div className="text-center text-white/60">{t('support.verifying')}</div>;
@@ -140,60 +122,31 @@ function Result({ status, locale }: { status: Status; locale: string }) {
       </div>
     );
   }
-  if (status.kind === 'unsigned') {
+  if (status.kind === 'unverified') {
     return (
       <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-5 text-sm space-y-2">
-        <p className="font-semibold text-amber-200">{t('support.unsignedTitle')}</p>
-        <p className="text-white/75">{t('support.unsignedBody')}</p>
-        <CvSummary cv={status.cv} />
+        <p className="font-semibold text-amber-200">{t('support.unverifiedTitle')}</p>
+        <p className="text-white/75">{t('support.unverifiedBody')}</p>
       </div>
     );
   }
-  if (status.kind === 'invalid') {
-    return (
-      <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-5 text-sm space-y-2">
-        <p className="font-semibold text-red-200">{t('support.invalidTitle')}</p>
-        <p className="text-white/75">{t('support.invalidBody')}</p>
-        <p className="text-xs text-white/45">{t('support.invalidReason', { reason: status.reason })}</p>
-        <CvSummary cv={status.cv} />
-      </div>
-    );
-  }
+  // verified
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-5 text-sm space-y-3">
-        <div className="flex items-center gap-2 text-emerald-200">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 4 6v6c0 5 3.5 9.5 8 10 4.5-.5 8-5 8-10V6l-8-4z"/><path d="m9 12 2 2 4-4"/></svg>
-          <p className="font-semibold">{t('support.validTitle')}</p>
-        </div>
-        <dl className="grid grid-cols-[120px_1fr] gap-y-1.5 text-[13px]">
-          <dt className="text-white/50">{t('support.fields.author')}</dt>
-          <dd className="text-white">{status.cv.personal.fullName || '—'}</dd>
-          <dt className="text-white/50">{t('support.fields.template')}</dt>
-          <dd className="text-white capitalize">{status.cv.template}</dd>
-          <dt className="text-white/50">{t('support.fields.signedAt')}</dt>
-          <dd className="text-white">{formatDate(status.signedAt, locale)}</dd>
-          <dt className="text-white/50">{t('support.fields.keyId')}</dt>
-          <dd className="text-white font-mono">{status.keyId}</dd>
-          <dt className="text-white/50">{t('support.fields.hash')}</dt>
-          <dd className="text-white font-mono break-all text-[11.5px]">{status.hash}</dd>
-        </dl>
+      <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-5 text-sm space-y-2">
+        <p className="font-semibold text-emerald-200">{t('support.verifiedTitle')}</p>
+        <p className="text-white/75">{t('support.verifiedBody')}</p>
       </div>
 
       <ComplaintForm
         expectedEmail={status.cv.personal.email}
-        keyId={status.keyId}
-        hash={status.hash}
-        signedAt={status.signedAt}
         author={status.cv.personal.fullName}
       />
     </div>
   );
 }
 
-function ComplaintForm({
-  expectedEmail, keyId, hash, signedAt, author,
-}: { expectedEmail: string; keyId: string | null; hash: string | null; signedAt: string | null; author: string }) {
+function ComplaintForm({ expectedEmail, author }: { expectedEmail: string; author: string }) {
   const { t } = useT();
   const [email,   setEmail]   = useState('');
   const [subject, setSubject] = useState('');
@@ -214,7 +167,7 @@ function ComplaintForm({
     }
     setBusy(true);
     try {
-      await submitComplaint({ email, subject, message, keyId, hash, signedAt, author });
+      await submitComplaint({ email, subject, message, author });
       setDone(true);
     } catch (err) {
       setError((err as Error).message);
@@ -269,24 +222,4 @@ function ComplaintForm({
       </div>
     </div>
   );
-}
-
-function CvSummary({ cv }: { cv: CVData }) {
-  const { t } = useT();
-  return (
-    <dl className="grid grid-cols-[120px_1fr] gap-y-1 text-[12.5px] mt-2 pt-2 border-t border-white/10">
-      <dt className="text-white/45">{t('support.fields.author')}</dt>
-      <dd className="text-white/80">{cv.personal.fullName || '—'}</dd>
-      <dt className="text-white/45">{t('support.fields.template')}</dt>
-      <dd className="text-white/80 capitalize">{cv.template}</dd>
-    </dl>
-  );
-}
-
-function formatDate(iso: string | null, locale: string): string {
-  if (!iso) return '—';
-  try {
-    const tag = locale === 'pt' ? 'pt-PT' : locale === 'en' ? 'en-GB' : locale === 'es' ? 'es-ES' : locale === 'fr' ? 'fr-FR' : 'de-DE';
-    return new Date(iso).toLocaleString(tag);
-  } catch { return iso; }
 }

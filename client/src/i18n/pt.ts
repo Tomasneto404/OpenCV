@@ -8,6 +8,10 @@
  *   - Nested objects group strings by feature/page.
  *   - Keys are short kebab-ish identifiers.
  *   - Strings may contain {placeholders} replaced at runtime by t(key, vars).
+ *
+ * From Sessão 22 we no longer surface ANY mention of "signature", "Ed25519",
+ * "key id", "hash", or "config embedded in the PDF" to the user. Those are
+ * internal-only. If you find a new string referencing them, rephrase it.
  */
 export const dict = {
   common: {
@@ -46,22 +50,22 @@ export const dict = {
       badge: 'Sem registo · Sem subscrição · Sem PII guardado',
       title: 'O teu CV,',
       titleAccent: 'pronto em minutos',
-      subtitle: 'Preenche o formulário, vê o preview ao vivo, paga {price} e descarrega o PDF. Atualiza mais tarde por apenas {updatePrice}.',
+      subtitle: 'Preenche o formulário, vê o preview ao vivo, paga {price} e descarrega o PDF — também recebes uma cópia por email. Atualiza mais tarde por apenas {updatePrice}.',
       ctaCreate: 'Criar CV agora — {price}',
       ctaSample: 'Ver exemplo preenchido',
       feature1: 'Cartão',
       feature2: 'Multibanco',
       feature3: 'MB WAY',
-      feature4: 'PDF assinado · Ed25519',
+      feature4: 'Recebes por email',
     },
     pricing: {
       newLabel: 'Novo',
       newTitle: 'Criar CV do zero',
-      newBody: 'Começa com um template premium. Edita tudo no formulário, vês o preview ao vivo, pagas e levas PDF + configuração embutida.',
+      newBody: 'Começa com um template premium. Edita tudo no formulário, vês o preview ao vivo, pagas e levas PDF — também enviado por email.',
       newCta: 'Começar →',
       updateLabel: 'Atualizar',
       updateTitle: 'Já tens um CV CVeaver?',
-      updateBody: 'Carrega o teu .pdf CVeaver (assinatura válida) ou .json antigo. Mudas o que quiseres e pagas apenas metade.',
+      updateBody: 'Carrega o teu PDF (ou .json antigo). Mudas o que quiseres e pagas apenas metade.',
       updateCta: 'Carregar PDF ou JSON',
       updateBusy: 'A carregar...',
     },
@@ -77,21 +81,21 @@ export const dict = {
       step1Body: 'Formulário simples com preview ao vivo. Undo/redo e auto-save no browser.',
       step2Title: 'Pagas {price}',
       step2Body: 'Stripe seguro. Cartão, Multibanco ou MB WAY. Sem subscrição.',
-      step3Title: 'Descarregas',
-      step3Body: 'PDF assinado digitalmente com a configuração embutida — pronto para atualizares por metade.',
+      step3Title: 'Recebes',
+      step3Body: 'Descarregas o PDF e recebes também uma cópia no email — pronto para atualizar mais tarde por metade.',
     },
     faqShort: {
       kicker: 'FAQ',
       title: 'Perguntas rápidas',
       seeAll: 'Ver todas as perguntas →',
-      q1: 'O PDF está mesmo assinado?',
-      a1: 'Sim. Cada PDF leva uma assinatura Ed25519 sobre o conteúdo canónico do CV. Qualquer pessoa pode verificá-lo em /support.',
+      q1: 'Recebo o CV por email?',
+      a1: 'Sim. Depois do pagamento, enviamos automaticamente uma cópia do PDF para o email que indicaste no Stripe Checkout.',
       q2: 'Os meus dados ficam guardados?',
-      a2: 'Não. Ficam apenas no teu browser até pagares. No pagamento são enviados temporariamente para gerar o link de download e a assinatura, e descartados pouco depois.',
+      a2: 'Não. Ficam apenas no teu browser até pagares. No pagamento são enviados temporariamente para gerar o PDF e descartados pouco depois.',
       q3: 'Como atualizo o CV?',
-      a3: 'A configuração fica embutida dentro do próprio PDF. Carregas o PDF (ou o .json antigo), mudas o que quiseres, pagas {updatePrice}.',
+      a3: 'Carregas de volta o PDF (ou o .json antigo), mudas o que quiseres, pagas {updatePrice}.',
     },
-    footer: 'Pagamento seguro via Stripe. Assinatura Ed25519. Os teus dados não saem do teu browser sem o teu consentimento.',
+    footer: 'Pagamento seguro via Stripe. Os teus dados não saem do teu browser sem o teu consentimento.',
   },
 
   builder: {
@@ -172,16 +176,11 @@ export const dict = {
   paid: {
     confirmed: 'Pagamento confirmado',
     title: 'O teu CV está pronto.',
-    subtitle: 'Descarrega o PDF — leva a configuração e a assinatura digital embutidas, prontas para futuras atualizações.',
+    subtitle: 'Descarrega o PDF — também enviámos uma cópia para o email indicado no pagamento.',
     downloadPdf: 'Descarregar PDF',
-    downloadPdfBusy: 'A gerar PDF...',
+    downloadPdfBusy: 'A preparar PDF...',
     downloadPdfDone: '✓ PDF descarregado · descarregar novamente',
-    downloadJson: 'Descarregar configuração (.json) à parte',
-    downloadJsonDone: '✓ Configuração descarregada · descarregar novamente',
-    signedTitle: 'PDF assinado digitalmente',
-    signedBody: 'A assinatura Ed25519 prova que o ficheiro saiu do CVeaver. Qualquer pessoa pode validar o PDF comparando-o com a nossa chave pública.',
-    embedTitle: 'Configuração dentro do PDF',
-    embedBody: 'O ficheiro cveaver.json está anexado dentro do PDF. Da próxima vez que quiseres atualizar, podes carregar o próprio PDF — ou usar o .json à parte.',
+    emailSent: 'Enviámos uma cópia para {email}',
     editAgain: 'Voltar a editar (sem pagar de novo nesta sessão)',
     startOther: 'Começar outro CV',
   },
@@ -189,24 +188,16 @@ export const dict = {
   support: {
     navBack: '← Voltar',
     title: 'Suporte CVeaver',
-    subtitle: 'Carrega o teu PDF CVeaver para verificarmos a assinatura digital. Se a assinatura for válida, podes abrir uma reclamação.',
+    subtitle: 'Carrega o teu PDF para podermos confirmar que foi gerado pelo CVeaver. Em caso afirmativo, podes abrir uma reclamação.',
     drop: 'Arrasta o PDF aqui',
     dropOr: 'ou clica para escolher um ficheiro',
     verifying: 'A verificar...',
-    invalidTitle: 'Assinatura inválida',
-    invalidBody: 'A assinatura não corresponde ao conteúdo do CV — o ficheiro foi alterado depois de ser assinado. Não podemos abrir uma reclamação sem um PDF íntegro.',
-    invalidReason: 'razão: {reason}',
-    unsignedTitle: 'PDF sem assinatura',
-    unsignedBody: 'Este PDF não foi assinado pelo CVeaver — não podemos verificar autoria.',
     errorTitle: 'Não consegui verificar',
-    validTitle: 'Assinatura válida · emitida pelo CVeaver',
-    fields: {
-      author: 'Autor',
-      template: 'Template',
-      signedAt: 'Assinado em',
-      keyId: 'Key ID',
-      hash: 'Hash',
-    },
+    errorPdfOnly: 'Carrega o PDF, não o .json.',
+    verifiedTitle: 'PDF verificado',
+    verifiedBody: 'Reconhecemos este PDF como gerado pelo CVeaver. Podes agora abrir uma reclamação.',
+    unverifiedTitle: 'PDF não reconhecido',
+    unverifiedBody: 'Não conseguimos confirmar que este PDF foi gerado pelo CVeaver. Não podemos abrir uma reclamação sem essa confirmação.',
     complaint: {
       title: 'Abrir reclamação',
       subtitle: 'A reclamação fica associada ao PDF verificado acima. O email tem de coincidir com o email do CV.',
@@ -234,12 +225,12 @@ export const dict = {
         a: 'Usamos Stripe Checkout. Aceitamos Cartão, Multibanco e MB WAY. Não guardamos dados de pagamento — passam directamente para a Stripe.',
       },
       {
-        q: 'Posso atualizar o meu CV mais tarde?',
-        a: 'Sim. Quando carregas o teu PDF CVeaver (assinatura válida) ou o .json antigo, pagas apenas {updatePrice}.',
+        q: 'Recebo o CV por email?',
+        a: 'Sim. Depois do pagamento confirmado, enviamos automaticamente o PDF para o email que indicaste no Stripe Checkout.',
       },
       {
-        q: 'O que é a assinatura digital Ed25519?',
-        a: 'Cada PDF leva uma assinatura criptográfica que prova que o conteúdo saiu do CVeaver e não foi alterado depois. Pode ser verificada em /support.',
+        q: 'Posso atualizar o meu CV mais tarde?',
+        a: 'Sim. Carregas de volta o teu PDF (ou o .json antigo), mudas o que quiseres e pagas apenas {updatePrice}.',
       },
       {
         q: 'Que dados pessoais guardam?',
@@ -248,6 +239,10 @@ export const dict = {
       {
         q: 'Posso adicionar certificados ao CV?',
         a: 'Sim. Na secção Certificados podes anexar até 5 PDFs (máx 5 MB cada). Aparecem como páginas no fim do CV.',
+      },
+      {
+        q: 'O que é o sistema de rank?',
+        a: 'Cada vez que pagas para atualizar o teu CV, sobes no rank. Mais updates → melhor badge. É só decorativo.',
       },
       {
         q: 'Os meus templates são ATS-friendly?',
@@ -263,29 +258,37 @@ export const dict = {
     sections: [
       { h: '1. Serviço', p: 'O CVeaver é um gerador de CVs em PDF pago por uso (€1 por novo CV, €0,50 por atualização). Sem conta, sem subscrição.' },
       { h: '2. Pagamento', p: 'Os pagamentos são processados pela Stripe. Não armazenamos dados de cartão. Não há reembolsos após download do PDF, dado que o produto é digital e entregue de imediato.' },
-      { h: '3. Dados pessoais', p: 'O conteúdo do CV é armazenado temporariamente no servidor apenas para gerar o link de download assinado, e descartado após. Os dados ficam principalmente no teu browser (localStorage). Não há perfis, accounts ou analytics que te identifiquem.' },
-      { h: '4. Assinatura digital', p: 'Cada PDF é assinado com Ed25519. A chave pública está disponível em /public-key. A assinatura prova que o PDF foi gerado pelo CVeaver e que o conteúdo não foi alterado.' },
+      { h: '3. Dados pessoais', p: 'O conteúdo do CV é armazenado temporariamente no servidor apenas para gerar o link de download e enviar por email, e descartado após. Os dados ficam principalmente no teu browser (localStorage). Não há perfis, accounts ou analytics que te identifiquem.' },
+      { h: '4. Email', p: 'Após o pagamento, enviamos automaticamente uma cópia do PDF para o email que indicaste no Stripe Checkout. Esse endereço fica guardado dentro do próprio ficheiro para preencher automaticamente em futuras atualizações.' },
       { h: '5. Limites de responsabilidade', p: 'O CVeaver é fornecido tal-como-está. Não somos responsáveis pelo resultado de candidaturas ou pela exactidão do conteúdo introduzido pelo utilizador.' },
-      { h: '6. Reclamações', p: 'Podes abrir uma reclamação em /support após verificar a assinatura do teu PDF. Respondemos em prazo razoável por email.' },
+      { h: '6. Reclamações', p: 'Podes abrir uma reclamação em /support após verificarmos o teu PDF. Respondemos em prazo razoável por email.' },
       { h: '7. Alterações', p: 'Podemos atualizar estes termos. A data de última atualização indica quando.' },
     ],
   },
 
   toast: {
-    pdfSignedValid: 'PDF assinado e válido',
-    pdfSignedValidBody: 'Assinado em {signedAt} · key {keyId}…',
-    pdfTampered: 'Assinatura inválida',
-    pdfTamperedBody: 'O conteúdo do PDF foi alterado depois de ser assinado.',
-    pdfUnsigned: 'PDF carregado',
-    pdfUnsignedBody: 'Sem assinatura digital — versão antiga ou modificada.',
-    jsonLoaded: 'Configuração carregada',
+    cvLoaded: 'CV carregado',
+    pdfNotRecognised: 'PDF não reconhecido',
+    pdfNotRecognisedBody: 'Não conseguimos verificar este PDF. Podes começar do zero com este conteúdo pagando o preço normal.',
     updateBlockedTitle: 'Atualização bloqueada',
-    updateBlockedBody: 'Só PDFs com assinatura válida ou ficheiros .json originais podem ser atualizados por {updatePrice}. Podes começar com este conteúdo pagando {price}.',
+    updateBlockedBody: 'Só PDFs CVeaver verificados ou ficheiros .json originais podem ser atualizados por {updatePrice}. Podes começar com este conteúdo pagando {price}.',
     cannotOpenTitle: 'Não consegui abrir',
     paymentFailTitle: 'Falha a iniciar pagamento',
-    pdfFailTitle: 'Falha a gerar PDF',
+    pdfFailTitle: 'Falha a descarregar PDF',
     pdfDoneTitle: 'PDF descarregado',
-    pdfDoneSigned: 'Assinado digitalmente.',
+    emailSent: 'Enviámos uma cópia para {email}',
+  },
+
+  badges: {
+    editCount: '{n} versão paga',
+    nextHint: 'Faltam {n} para {tier}',
+    tiers: [
+      { label: 'Castor Cria',        description: 'Primeiro contacto com o CVeaver.' },
+      { label: 'Castor Aprendiz',    description: 'Primeira versão paga.' },
+      { label: 'Castor Construtor',  description: 'Já fizeste o teu primeiro update.' },
+      { label: 'Castor Mestre',      description: 'Atualizas o CV regularmente.' },
+      { label: 'Engenheiro Castor',  description: 'Top tier — obrigado pelo apoio.' },
+    ],
   },
 
   language: {

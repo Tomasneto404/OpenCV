@@ -207,6 +207,27 @@ textarea.field { resize: vertical; min-height: 5rem; }
   overflow: hidden;
 }
 
+/* ── Anti-print fricção ────────────────────────────────────────────────
+   Hides the entire UI when the user invokes browser Print and shows a
+   message that the real PDF must be downloaded after paying. This is NOT
+   security — toggling "Emulate CSS media type: screen" in DevTools bypasses
+   it. The real paywall is server-side. But it stops the casual "Cmd+P →
+   Save as PDF" route. */
+@media print {
+  body > * { display: none !important; }
+  body::before {
+    content: "CVeaver — impressão desativada. Para descarregar o PDF, finaliza o pagamento.";
+    display: block;
+    padding: 4rem 2rem;
+    font-family: var(--font-sans, system-ui);
+    font-size: 1.25rem;
+    line-height: 1.5;
+    color: #2c1c0b;
+    text-align: center;
+    background: #faf6ef;
+  }
+}
+
 /* ── Light-mode bridges ────────────────────────────────────────────────
    Most components were written with hardcoded white-on-dark utilities
    (text-white/X, bg-white/X, border-white/X). These rules remap them so

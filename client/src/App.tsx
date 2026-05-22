@@ -2,15 +2,19 @@
  * App shell — owns:
  *   - Top-level screen routing via window.location.pathname (no react-router
  *     dependency; the surface is small enough to handle inline).
- *   - The currently-edited CV (via useCV), payment state, signature state.
+ *   - The currently-edited CV (via useCV), payment state, meta state.
  *   - The Stripe return URL handler that swaps the user into the Paid screen.
  *
- * Update-tier gate (strict mode):
- *   - `eligibleForUpdate` is true only when the loaded content came from
- *     either an original JSON config or a PDF with a verified signature.
+ * Update-tier gate:
+ *   - `mode` becomes 'update' only when the loaded content came from a
+ *     verified source (a JSON config or a server-verified PDF upload).
  *   - The Pay button in Builder always uses €1 unless this flag is true.
- *   - Without this, anyone could craft an arbitrary PDF/JSON and claim the
- *     €0.50 update price.
+ *
+ * Meta / badges:
+ *   - `currentMeta` carries the editCount + createdAt + lastSentEmail
+ *     decoded from the user's previous PDF (update flow). The cipher blob
+ *     (`prevPayloadB64`) is passed back to the server when saving so the
+ *     chain is tamper-evident.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Landing } from './components/Landing';
@@ -21,16 +25,28 @@ import { FAQ } from './components/FAQ';
 import { Terms } from './components/Terms';
 import { useCV } from './state/useCV';
 import { sampleCV } from './types';
-import type { CVData } from './types';
-import type { SignatureEnvelope, PublicKeyInfo } from './utils/pdfEnhance';
+import type { CVData, CVMeta } from './types';
 import { createCheckout, fetchCV, saveCV, verifySession } from './api';
 import { useToast } from './components/Toast';
 import { useT } from './i18n';
 import { PRICES, formatPrice } from './utils/format';
 
+// =====================================================================
+// FIXME: PAYMENT BYPASS — TEST MODE ONLY · REMOVE BEFORE PRODUCTION
+// =====================================================================
+// While true, the Pay button skips Stripe entirely. It still saves the CV
+// to the server, then jumps straight to the Paid screen which downloads
+// the PDF through /dev/pdf (no payment gate). This lets us iterate on the
+// full Builder → Paid → Badge flow without burning Stripe test sessions
+// or needing SMTP configured.
+//
+// Set to `false` (or delete the branch in pay() below) before deploying.
+// The Builder shows a loud amber banner whenever this is on.
+// =====================================================================
+export const BYPASS_PAYMENT_FOR_TESTING = true;
+
 type Screen = 'landing' | 'builder' | 'paid' | 'support' | 'faq' | 'terms';
 
-/** Resolve the screen from the current URL pathname. */
 function pathToScreen(path: string): Screen {
   if (path.startsWith('/support') || path.startsWith('/verify')) return 'support';
   if (path.startsWith('/faq'))     return 'faq';
@@ -41,19 +57,19 @@ function pathToScreen(path: string): Screen {
 export function App() {
   const { cv, replace, undo, redo, clear, hardReset, canUndo, canRedo, saving } = useCV();
   const [screen, setScreen] = useState<Screen>(() => pathToScreen(window.location.pathname));
-  /**
-   * `mode` doubles as the update-eligibility flag: it only becomes 'update'
-   * when the loaded source is verified (JSON or signed PDF). PDFs with
-   * invalid/missing signatures stay on 'new'.
-   */
   const [mode, setMode] = useState<'new' | 'update'>('new');
   const [paying, setPaying] = useState(false);
-  const [signature, setSignature] = useState<SignatureEnvelope | undefined>(undefined);
-  const [publicKey, setPublicKey] = useState<PublicKeyInfo | undefined>(undefined);
+  /** Meta from the uploaded previous PDF (update flow) or from the latest
+   *  paid render (post-payment). Drives the badge chip everywhere. */
+  const [currentMeta, setCurrentMeta] = useState<CVMeta | undefined>(undefined);
+  /** Opaque ciphertext of the previous payload — passed back to /cv. */
+  const [prevPayloadB64, setPrevPayloadB64] = useState<string | undefined>(undefined);
+  /** Stripe session + CV id used to redeem the paid PDF. */
+  const [paidSessionId, setPaidSessionId] = useState<string | undefined>(undefined);
+  const [paidCvId,      setPaidCvId]      = useState<string | undefined>(undefined);
   const toast = useToast();
   const { t, locale } = useT();
 
-  /** Push a new URL without reloading, switch screen, update history. */
   const navigate = useCallback((path: string) => {
     window.history.pushState({}, '', path);
     setScreen(pathToScreen(path));
@@ -65,7 +81,7 @@ export function App() {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  // Stripe checkout return handler
+  // Stripe checkout return handler.
   useEffect(() => {
     const url = new URL(window.location.href);
     const success = url.searchParams.get('success');
@@ -75,18 +91,17 @@ export function App() {
 
     if (success === 'true' && sessionId && cvId) {
       void (async () => {
-        const result = await verifySession(sessionId, cvId);
+        const result = await verifySession(sessionId);
         if (result.paid) {
           try {
             const fetched = await fetchCV(cvId);
-            const { ...rest } = fetched as CVData & { savedAt?: number };
-            replace(rest as CVData);
+            replace(fetched);
           } catch {
-            /* fall back to localStorage */
+            /* fall back to whatever's in localStorage */
           }
-          if (result.signature) setSignature(result.signature);
-          if (result.publicKey) setPublicKey(result.publicKey);
           if (kind) setMode(kind);
+          setPaidSessionId(sessionId);
+          setPaidCvId(cvId);
           setScreen('paid');
         }
         window.history.replaceState({}, '', '/');
@@ -97,27 +112,25 @@ export function App() {
 
   const startNew = () => {
     setMode('new');
-setSignature(undefined);
+    setCurrentMeta(undefined);
+    setPrevPayloadB64(undefined);
     navigate('/');
     setScreen('builder');
   };
 
   /**
-   * Apply a loaded CV from JSON or PDF.
-   *
-   *   sourceVerified=true  → eligible for €0.50 update tier.
-   *   sourceVerified=false → loaded for editing but Pay button stays at €1
-   *                          (and we toast to explain why).
+   * Apply a loaded CV. `verified=true` ⇒ eligible for the update tier and
+   * carries the encrypted prev payload + meta for chaining.
    */
   const loadConfig = (
     loaded: CVData,
-    opts?: { signature?: SignatureEnvelope; sourceVerified?: boolean },
+    opts?: { verified?: boolean; meta?: CVMeta; prevPayloadB64?: string },
   ) => {
     replace(loaded);
-    const verified = Boolean(opts?.sourceVerified);
+    const verified = Boolean(opts?.verified);
     setMode(verified ? 'update' : 'new');
-    if (opts?.signature && verified) setSignature(opts.signature);
-    else setSignature(undefined);
+    setCurrentMeta(verified ? opts?.meta : undefined);
+    setPrevPayloadB64(verified ? opts?.prevPayloadB64 : undefined);
 
     if (!verified) {
       toast.push({
@@ -137,7 +150,8 @@ setSignature(undefined);
   const loadSample = () => {
     replace(sampleCV());
     setMode('new');
-setSignature(undefined);
+    setCurrentMeta(undefined);
+    setPrevPayloadB64(undefined);
     navigate('/');
     setScreen('builder');
   };
@@ -147,8 +161,21 @@ setSignature(undefined);
   const pay = async () => {
     setPaying(true);
     try {
-      const id = await saveCV(cv);
-      const url = await createCheckout(id, mode);
+      const customerEmail = currentMeta?.lastSentEmail ?? undefined;
+      const id = await saveCV(cv, { prevPayloadB64, customerEmail });
+
+      if (BYPASS_PAYMENT_FOR_TESTING) {
+        // TEST MODE — skip Stripe and jump to Paid screen. The Paid screen's
+        // download button will hit /dev/pdf instead of the real /pdf endpoint
+        // because of the sentinel sessionId='TEST'.
+        setPaidSessionId('TEST');
+        setPaidCvId(id);
+        setScreen('paid');
+        setPaying(false);
+        return;
+      }
+
+      const url = await createCheckout(id, mode, customerEmail);
       window.location.href = url;
     } catch (err) {
       toast.push({ kind: 'error', title: t('toast.paymentFailTitle'), body: (err as Error).message });
@@ -168,14 +195,18 @@ setSignature(undefined);
     return (
       <Paid
         cv={cv}
-        signature={signature}
-        publicKey={publicKey}
+        sessionId={paidSessionId}
+        cvId={paidCvId}
+        initialMeta={currentMeta}
+        onMetaUpdate={setCurrentMeta}
         onReset={() => {
           hardReset();
-          setSignature(undefined);
-          setPublicKey(undefined);
+          setCurrentMeta(undefined);
+          setPrevPayloadB64(undefined);
+          setPaidSessionId(undefined);
+          setPaidCvId(undefined);
           setMode('new');
-            navigate('/');
+          navigate('/');
         }}
         onEditAgain={() => { setMode('update'); setScreen('builder'); }}
       />
@@ -186,6 +217,7 @@ setSignature(undefined);
     <Builder
       cv={cv}
       mode={mode}
+      meta={currentMeta}
       onChange={replace}
       onBack={() => navigate('/')}
       onPay={pay}

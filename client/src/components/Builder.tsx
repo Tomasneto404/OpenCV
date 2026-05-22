@@ -13,7 +13,7 @@
  * All visible strings come from the i18n dictionary.
  */
 import { useState, type ReactNode } from 'react';
-import type { CVData } from '../types';
+import type { CVData, CVMeta } from '../types';
 import { PersonalSection } from './Form/PersonalSection';
 import { SummarySection } from './Form/SummarySection';
 import { ExperienceSection } from './Form/ExperienceSection';
@@ -24,7 +24,7 @@ import { ProjectsSection } from './Form/ProjectsSection';
 import { CertificatesSection } from './Form/CertificatesSection';
 import { TemplatePicker } from './TemplatePicker';
 import { Preview } from './Preview';
-import { generateCvPdf } from '../utils/pdf';
+import { downloadDevPdf } from '../utils/pdf';
 import { downloadConfig, slugify } from '../utils/download';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { sectionStatus, isCvEmpty, type SectionKey } from '../utils/completion';
@@ -32,10 +32,14 @@ import { useToast } from './Toast';
 import { useT } from '../i18n';
 import { PRICES, formatPrice } from '../utils/format';
 import { BrandMark } from './BrandMark';
+import { Badge } from './Badge';
+import { BYPASS_PAYMENT_FOR_TESTING } from '../App';
 
 interface Props {
   cv: CVData;
   mode: 'new' | 'update';
+  /** Rank info from the previously-loaded PDF (update flow). Drives the badge chip. */
+  meta?: CVMeta;
   onChange: (next: CVData) => void;
   onBack: () => void;
   onPay: () => void;
@@ -55,7 +59,7 @@ const SECTION_KEYS: SectionKey[] = [
 ];
 
 export function Builder({
-  cv, mode, onChange, onBack, onPay, paying,
+  cv, mode, meta, onChange, onBack, onPay, paying,
   onUndo, onRedo, onClear, canUndo, canRedo,
   saving, onLoadSample,
 }: Props) {
@@ -95,6 +99,7 @@ export function Builder({
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button className="btn-ghost text-sm shrink-0" onClick={onBack} title={t('builder.backTitle')}>←</button>
           <BrandMark size={36} className="shrink-0" />
+          {meta && <Badge meta={meta} compact />}
           <SaveIndicator saving={saving} t={t} />
         </div>
 
@@ -121,7 +126,7 @@ export function Builder({
                 title="Dev — gerar PDF sem pagar"
                 onClick={async () => {
                   const base = slugify(cv.personal.fullName) || 'cv';
-                  try { await generateCvPdf(cv, { filename: `${base}.pdf` }); }
+                  try { await downloadDevPdf(cv, { filename: `${base}.pdf` }); }
                   catch (err) { toast.push({ kind: 'error', title: t('toast.pdfFailTitle'), body: (err as Error).message }); }
                 }}
               >dev: PDF</button>
@@ -154,6 +159,13 @@ export function Builder({
           {t('builder.fillNameWarning')}{' '}
           <button className="underline underline-offset-2" onClick={() => setActive('personal')}>{t('builder.fillNameWarningAction')}</button>{' '}
           {t('builder.fillNameWarningTail')}
+        </div>
+      )}
+
+      {/* FIXME: TEST MODE banner — remove with BYPASS_PAYMENT_FOR_TESTING. */}
+      {BYPASS_PAYMENT_FOR_TESTING && (
+        <div className="px-4 sm:px-6 py-2 text-[12px] text-amber-100 bg-amber-600/30 border-b border-amber-400/40 text-center font-medium tracking-wide">
+          ⚠ TEST MODE — botão de pagar ignora o Stripe e descarrega directo. Lembra-te de remover antes de produção.
         </div>
       )}
 

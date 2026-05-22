@@ -4,6 +4,9 @@ import './index.css';
 import { App } from './App';
 import { ToastProvider } from './components/Toast';
 import { I18nProvider } from './i18n';
+import { installCaptureGuard } from './utils/captureGuard';
+
+installCaptureGuard();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

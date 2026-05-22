@@ -12,10 +12,8 @@
  *     This rule is enforced in App.onLoadConfig via the `sourceVerified` flag.
  */
 import { useRef, useState, type ReactNode } from 'react';
-import type { CVData } from '../types';
-import type { SignatureEnvelope } from '../utils/pdfEnhance';
+import type { CVData, CVMeta } from '../types';
 import { loadConfigFromFile, ConfigLoadError } from '../utils/loadConfig';
-import { verifyPdfPayload } from '../api';
 import { useToast } from './Toast';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { BrandMark } from './BrandMark';
@@ -27,9 +25,9 @@ interface Props {
   onNew: () => void;
   /**
    * Called when the user uploads a JSON or PDF.
-   * `opts.sourceVerified` is true ⟺ this content is eligible for €0.50 update.
+   * `opts.verified` true ⇒ eligible for the €0.50 update tier.
    */
-  onLoadConfig: (cv: CVData, opts?: { signature?: SignatureEnvelope; sourceVerified?: boolean }) => void;
+  onLoadConfig: (cv: CVData, opts?: { verified?: boolean; meta?: CVMeta; prevPayloadB64?: string }) => void;
   onSample: () => void;
   onNavigate: (path: string) => void;
 }
@@ -44,45 +42,26 @@ export function Landing({ onNew, onLoadConfig, onSample, onNavigate }: Props) {
   const priceUpdate = formatPrice(PRICES.updateCents, locale);
 
   /**
-   * Read the uploaded file, decide how to interpret it, then hand off to the
-   * App-level loadConfig with verification metadata so it can pick the right
-   * pricing tier.
+   * Hand off the uploaded file to the server's /decode-pdf (PDFs) or parse
+   * inline (JSON). The server returns `verified` + meta + an opaque cipher
+   * blob; we just propagate them up.
    */
   const handleFile = async (file: File | null) => {
     if (!file) return;
     setBusy(true);
     try {
       const loaded = await loadConfigFromFile(file);
-
-      if (loaded.source === 'pdf' && loaded.signature) {
-        const verify = await verifyPdfPayload(loaded.cv, loaded.signature);
-        if (verify.valid) {
-          toast.push({
-            kind: 'success',
-            title: t('toast.pdfSignedValid'),
-            body: t('toast.pdfSignedValidBody', {
-              signedAt: formatDate(verify.signedAt, locale),
-              keyId: verify.keyId?.slice(0, 12) ?? '',
-            }),
-          });
-          onLoadConfig(loaded.cv, { signature: loaded.signature, sourceVerified: true });
-          return;
-        }
-        toast.push({ kind: 'error', title: t('toast.pdfTampered'), body: t('toast.pdfTamperedBody') });
-        onLoadConfig(loaded.cv, { signature: loaded.signature, sourceVerified: false });
+      if (loaded.verified) {
+        toast.push({ kind: 'success', title: t('toast.cvLoaded') });
+        onLoadConfig(loaded.cv, {
+          verified: true,
+          meta: loaded.meta,
+          prevPayloadB64: loaded.prevPayloadB64,
+        });
         return;
       }
-
-      if (loaded.source === 'pdf') {
-        // PDF without signature → not eligible for update tier
-        toast.push({ kind: 'info', title: t('toast.pdfUnsigned'), body: t('toast.pdfUnsignedBody') });
-        onLoadConfig(loaded.cv, { sourceVerified: false });
-        return;
-      }
-
-      // JSON original (v1) → eligible for update
-      toast.push({ kind: 'success', title: t('toast.jsonLoaded') });
-      onLoadConfig(loaded.cv, { sourceVerified: true });
+      toast.push({ kind: 'info', title: t('toast.pdfNotRecognised'), body: t('toast.pdfNotRecognisedBody') });
+      onLoadConfig(loaded.cv, { verified: false });
     } catch (err) {
       const msg = err instanceof ConfigLoadError ? err.message : (err as Error).message;
       toast.push({ kind: 'error', title: t('toast.cannotOpenTitle'), body: msg });
@@ -257,14 +236,6 @@ function Faq({ q, children }: { q: string; children: ReactNode }) {
       <div className="px-4 pb-4 text-sm text-white/70 leading-relaxed">{children}</div>
     </details>
   );
-}
-
-function formatDate(iso?: string | null, locale: string = 'pt-PT'): string {
-  if (!iso) return '—';
-  try {
-    const tag = locale === 'pt' ? 'pt-PT' : locale === 'en' ? 'en-GB' : locale === 'es' ? 'es-ES' : locale === 'fr' ? 'fr-FR' : locale === 'de' ? 'de-DE' : 'pt-PT';
-    return new Date(iso).toLocaleString(tag);
-  } catch { return iso; }
 }
 
 /**

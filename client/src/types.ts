@@ -112,8 +112,17 @@ export interface CVMeta {
   lastSentEmail: string | null;
 }
 
+/** Crypto-strong local id for CV sub-items (experience, education, etc.). */
 export function newId(): string {
-  return Math.random().toString(36).slice(2, 9);
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID().slice(0, 8);
+  }
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const buf = new Uint8Array(4);
+    crypto.getRandomValues(buf);
+    return Array.from(buf).map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  return Math.random().toString(36).slice(2, 10);
 }
 
 export function emptyCV(): CVData {

@@ -5,23 +5,20 @@
  *   POST /cv                       — stash a CV draft, returns id
  *   GET  /cv/:id                   — read it back (after Stripe roundtrip)
  *   POST /create-checkout-session  — Stripe Checkout creation
- *   GET  /verify-session/:sessionId — Stripe status only (no signature
- *                                    surfaced to the client; signing is
- *                                    purely internal from Sessão 22)
- *   GET  /pdf/:sessionId?cv_id=X   — **PAYWALLED**. Renders, encrypts the
- *                                    embedded payload, signs internally,
- *                                    emails it to customer, returns the PDF
- *   POST /decode-pdf               — decrypt an uploaded PDF's payload so
- *                                    the update flow can re-populate the
- *                                    builder. Used only by the client.
- *   POST /support                  — file a complaint (CV-bound)
- *   POST /verify-pdf               — internal-style verifier used by
- *                                    /support; returns simplified bool
+ *   GET  /verify-session/:sessionId — Stripe status only
+ *   GET  /pdf/:sessionId?cv_id=X   — **PAYWALLED**. Renders, encrypts,
+ *                                    signs internally, emails, returns PDF
+ *   POST /decode-pdf               — decrypt payload for the update flow
+ *   POST /support                  — file a complaint
+ *   POST /verify-pdf               — bool-only verifier used by /support
+ *   GET  /public-key               — Ed25519 public key (offline verify)
  *   GET  /health                   — liveness probe
  *
- * The /pdf endpoint is the centrepiece of the paywall: the only way a
- * user gets a finished PDF is through Stripe confirming payment.
- * The renderer + encryption key live only here.
+ * Hardening (Sessão 25 · OWASP Top 10):
+ *   - crypto-strong IDs (A02), input validation (A03/A04),
+ *     Helmet CSP (A05), generic error messages in prod (A05/A09),
+ *     filename sanitisation (A03), redacted logs (A09),
+ *     store entries auto-expire after 24h (A04).
  */
 import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
@@ -39,6 +36,14 @@ import { renderPdf } from './pdf/render.ts';
 import { readPayloadFromPdf } from './pdf/read.ts';
 import { sendCvByEmail } from './mail.ts';
 import type { CVData, CVMeta, EmbedPayloadV2 } from './types.ts';
+import {
+  randomId,
+  validateCV,
+  safeFilename,
+  safeErrorMessage,
+  redactEmail,
+  withinCertSizeCap,
+} from './security.ts';
 
 config();
 
@@ -57,16 +62,20 @@ const PAYMENT_METHODS = (process.env.STRIPE_PAYMENT_METHODS || 'card,multibanco'
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
+/* Entries older than this are evicted at write time to avoid unbounded
+   disk growth from abandoned drafts. */
+const STORE_TTL_MS = 24 * 60 * 60 * 1000;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ID_RE = /^[0-9a-f]{32}$/;
+const STRIPE_SESSION_RE = /^cs_(test_|live_)[A-Za-z0-9]+$/;
+
 /* ── Persistent store ──────────────────────────────────── */
 
 interface StoreEntry {
   cv: CVData;
-  /** When this draft was last touched server-side. */
   savedAt: number;
-  /** Encrypted payload (base64) from a previous PDF, if this is an update.
-   *  Used by /pdf to recover meta.editCount/createdAt deterministically. */
   prevPayloadB64?: string;
-  /** Pre-filled customer email passed to Stripe Checkout. */
   customerEmail?: string;
 }
 
@@ -82,6 +91,19 @@ function loadStore(): Store {
   }
 }
 
+function pruneStore(s: Store): Store {
+  const cutoff = Date.now() - STORE_TTL_MS;
+  let dropped = 0;
+  for (const id of Object.keys(s)) {
+    if (s[id].savedAt < cutoff) {
+      delete s[id];
+      dropped++;
+    }
+  }
+  if (dropped > 0) console.log(`[store] pruned ${dropped} entries older than ${STORE_TTL_MS / 3600000}h`);
+  return s;
+}
+
 function saveStore(data: Store): void {
   try {
     if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
@@ -91,17 +113,7 @@ function saveStore(data: Store): void {
   }
 }
 
-let store = loadStore();
-
-function generateId(): string {
-  return Math.random().toString(36).slice(2, 10);
-}
-
-function slugify(s: string): string {
-  return s
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-}
+let store = pruneStore(loadStore());
 
 /* ── Express ───────────────────────────────────────────── */
 
@@ -110,14 +122,30 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder'
 
 const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
+/* Trust proxy is needed for req.ip to reflect the real client when behind
+   a reverse proxy (Coolify/nginx/Cloudflare). Trust only the first hop. */
+app.set('trust proxy', 1);
+
+/* Helmet — full bundle with a tightened CSP. The API only serves JSON +
+   PDF; nothing needs scripts / styles inline. */
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
-  contentSecurityPolicy: false, // enforced at the client host
+  crossOriginOpenerPolicy:   { policy: 'same-origin' },
+  referrerPolicy:            { policy: 'no-referrer' },
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      defaultSrc:    ["'none'"],
+      baseUri:       ["'none'"],
+      frameAncestors: ["'none'"],
+      formAction:    ["'self'"],
+    },
+  },
+  permittedCrossDomainPolicies: { permittedPolicies: 'none' },
 }));
 
 app.use(cors({ origin: clientUrl }));
 app.use(express.json({ limit: '60mb' })); // photo + up to ~50 MB of certs
-/* /decode-pdf accepts the raw PDF bytes — registered just on that route. */
 
 /* PDF renders are heavy. Cap concurrency. */
 const renderLimit = pLimit(Number(process.env.PDF_CONCURRENCY ?? 4));
@@ -137,29 +165,42 @@ app.get('/health', (_req, res) => res.json({ ok: true, service: 'cveaver' }));
 
 app.post('/cv', writeLimiter, (req: Request, res: Response) => {
   try {
-    const { cv, prevPayloadB64, customerEmail } = req.body as {
-      cv?: CVData;
-      prevPayloadB64?: string;
-      customerEmail?: string;
+    const { cv: rawCv, prevPayloadB64, customerEmail } = req.body as {
+      cv?: unknown;
+      prevPayloadB64?: unknown;
+      customerEmail?: unknown;
     };
-    if (!cv) return res.status(400).json({ error: 'Missing cv' });
 
-    const id = generateId();
+    const cv = validateCV(rawCv);
+    if (!cv) return res.status(400).json({ error: 'Invalid CV shape' });
+    if (!withinCertSizeCap(cv.certificates)) {
+      return res.status(413).json({ error: 'Certificates exceed combined cap' });
+    }
+
+    const id = randomId();
     const entry: StoreEntry = { cv, savedAt: Date.now() };
-    if (prevPayloadB64) entry.prevPayloadB64 = prevPayloadB64;
-    if (customerEmail)  entry.customerEmail  = customerEmail;
+    if (typeof prevPayloadB64 === 'string' && prevPayloadB64.length < 64 * 1024 * 1024) {
+      entry.prevPayloadB64 = prevPayloadB64;
+    }
+    if (typeof customerEmail === 'string' && EMAIL_RE.test(customerEmail) && customerEmail.length < 256) {
+      entry.customerEmail = customerEmail;
+    }
     store[id] = entry;
+    store = pruneStore(store);
     saveStore(store);
     res.json({ id });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    console.error('[cv:post]', (err as Error).message);
+    res.status(500).json({ error: safeErrorMessage(err) });
   }
 });
 
 app.get('/cv/:id', standardLimiter, (req: Request, res: Response) => {
+  if (!ID_RE.test(req.params.id)) {
+    return res.status(404).json({ error: 'Not found' });
+  }
   const entry = store[req.params.id];
   if (!entry) return res.status(404).json({ error: 'Not found' });
-  // Only return the CV body — never the prev payload or stored email.
   res.json(entry.cv);
 });
 
@@ -194,28 +235,40 @@ function buildCheckout({ cvId, mode, customerEmail }: { cvId: string; mode?: 'ne
 app.post('/create-checkout-session', checkoutLimiter, async (req: Request, res: Response) => {
   try {
     const { cvId, mode, customerEmail } = req.body as {
-      cvId?: string; mode?: 'new' | 'update'; customerEmail?: string;
+      cvId?: unknown; mode?: unknown; customerEmail?: unknown;
     };
-    if (!cvId) return res.status(400).json({ error: 'Missing cvId' });
-    const session = await stripe.checkout.sessions.create(buildCheckout({ cvId, mode, customerEmail }));
+
+    if (typeof cvId !== 'string' || !ID_RE.test(cvId)) {
+      return res.status(400).json({ error: 'Invalid cvId' });
+    }
+    const safeMode: 'new' | 'update' = mode === 'update' ? 'update' : 'new';
+    const safeEmail = (typeof customerEmail === 'string'
+      && EMAIL_RE.test(customerEmail)
+      && customerEmail.length < 256)
+      ? customerEmail
+      : undefined;
+
+    const session = await stripe.checkout.sessions.create(
+      buildCheckout({ cvId, mode: safeMode, customerEmail: safeEmail }),
+    );
     res.json({ url: session.url, sessionId: session.id });
   } catch (err) {
-    console.error('Checkout error:', (err as Error).message);
-    res.status(500).json({ error: (err as Error).message });
+    console.error('[checkout]', (err as Error).message);
+    res.status(500).json({ error: safeErrorMessage(err) });
   }
 });
 
-/**
- * Tell the client whether the payment is settled. Used by App.tsx on the
- * Stripe return URL. We deliberately do NOT include the signature/publicKey
- * in the response from Sessão 22 — that's internal-only now.
- */
 app.get('/verify-session/:sessionId', standardLimiter, async (req: Request, res: Response) => {
+  const sid = req.params.sessionId;
+  if (typeof sid !== 'string' || !STRIPE_SESSION_RE.test(sid)) {
+    return res.status(400).json({ paid: false });
+  }
   try {
-    const session = await stripe.checkout.sessions.retrieve(req.params.sessionId);
+    const session = await stripe.checkout.sessions.retrieve(sid);
     res.json({ paid: session.payment_status === 'paid', status: session.payment_status });
   } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
+    console.error('[verify-session]', (err as Error).message);
+    res.status(400).json({ error: safeErrorMessage(err) });
   }
 });
 
@@ -223,12 +276,16 @@ app.get('/verify-session/:sessionId', standardLimiter, async (req: Request, res:
 
 app.get('/pdf/:sessionId', pdfLimiter, async (req: Request, res: Response) => {
   try {
-    const { sessionId } = req.params;
-    const cvId = req.query.cv_id as string | undefined;
-    if (!cvId) return res.status(400).json({ error: 'Missing cv_id' });
+    const sessionId = req.params.sessionId;
+    const cvId      = req.query.cv_id;
 
-    // 1. Confirm payment. Stripe throws on bad ids — we map to 402 so the
-    //    response is consistent and doesn't leak existence.
+    if (typeof sessionId !== 'string' || !STRIPE_SESSION_RE.test(sessionId)) {
+      return res.status(402).json({ error: 'Payment required' });
+    }
+    if (typeof cvId !== 'string' || !ID_RE.test(cvId)) {
+      return res.status(400).json({ error: 'Missing cv_id' });
+    }
+
     let session: Stripe.Checkout.Session;
     try {
       session = await stripe.checkout.sessions.retrieve(sessionId);
@@ -239,13 +296,10 @@ app.get('/pdf/:sessionId', pdfLimiter, async (req: Request, res: Response) => {
       return res.status(402).json({ error: 'Payment required', status: session.payment_status });
     }
 
-    // 2. Load the saved CV + any prior payload (for update flow).
     const stored = store[cvId];
     if (!stored) return res.status(404).json({ error: 'CV not found' });
     const cv = stored.cv;
 
-    // 3. Compute meta — preserve createdAt + editCount from prev payload
-    //    if this is a verified update.
     const now = new Date().toISOString();
     const customerEmail = session.customer_details?.email || stored.customerEmail || null;
 
@@ -267,18 +321,12 @@ app.get('/pdf/:sessionId', pdfLimiter, async (req: Request, res: Response) => {
       lastSentEmail: customerEmail,
     };
 
-    // 4. Sign internally + render. Signature/publicKey go INTO the payload
-    //    (for /support to verify later) but are never returned to the
-    //    client. They never appear on the user-facing UI.
     const signature = signCV(cv);
     const publicKey = getPublicKey();
-    const pdf = await renderLimit(() =>
-      renderPdf(cv, { signature, publicKey, meta }),
-    );
+    const pdf = await renderLimit(() => renderPdf(cv, { signature, publicKey, meta }));
 
-    const filename = `${slugify(cv.personal.fullName) || 'cv'}.pdf`;
+    const filename = safeFilename(`${cv.personal.fullName || 'cv'}.pdf`);
 
-    // 5. Email best-effort. Don't block the download if SMTP is down.
     if (customerEmail) {
       void sendCvByEmail({
         to: customerEmail,
@@ -286,7 +334,7 @@ app.get('/pdf/:sessionId', pdfLimiter, async (req: Request, res: Response) => {
         filename,
         fullName: cv.personal.fullName,
       }).then((ok) => {
-        console.log(`[mail] ${ok ? 'sent' : 'skipped/failed'} → ${customerEmail}`);
+        console.log(`[mail] ${ok ? 'sent' : 'skipped/failed'} → ${redactEmail(customerEmail)}`);
       });
     }
 
@@ -295,17 +343,15 @@ app.get('/pdf/:sessionId', pdfLimiter, async (req: Request, res: Response) => {
     res.setHeader('Content-Length', String(pdf.length));
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    /* Tell the client the new editCount so it can show the badge without
-       a second round-trip. Non-sensitive so safe to leak. */
     res.setHeader('X-CVeaver-Edit-Count', String(meta.editCount));
     res.setHeader('X-CVeaver-Created-At', meta.createdAt);
     if (customerEmail) res.setHeader('X-CVeaver-Last-Sent-Email', customerEmail);
     res.send(pdf);
 
-    console.log(`[pdf] delivered ${pdf.length} B for cv ${cvId} (edit #${meta.editCount})`);
+    console.log(`[pdf] delivered ${pdf.length} B for cv ${cvId.slice(0, 8)}… (edit #${meta.editCount})`);
   } catch (err) {
     console.error('[pdf] error:', (err as Error).message);
-    res.status(500).json({ error: (err as Error).message });
+    res.status(500).json({ error: safeErrorMessage(err) });
   }
 });
 
@@ -321,8 +367,6 @@ app.post('/decode-pdf', decodeLimiter, express.raw({ type: 'application/pdf', li
       return res.status(422).json({ error: 'Not a CVeaver PDF or tampered.' });
     }
 
-    /* Verify internal signature silently. Only return a boolean to the
-       client — never the keyId/hash/algorithm. */
     let verified = false;
     try {
       verified = payload.signature ? verifyCV(payload.cv, payload.signature) : false;
@@ -330,21 +374,24 @@ app.post('/decode-pdf', decodeLimiter, express.raw({ type: 'application/pdf', li
       verified = false;
     }
 
-    // Repackage the original ciphertext for the client to send back
-    // unchanged when it eventually creates the next /cv draft. This
-    // preserves the tamper-evidence chain.
+    // Validate the embedded CV before handing it back — defence in depth.
+    const cleanCv = validateCV(payload.cv);
+    if (!cleanCv) {
+      return res.status(422).json({ error: 'Embedded CV failed validation' });
+    }
+
     const { encryptPayload } = await import('./crypto.js');
     const prevPayloadB64 = Buffer.from(encryptPayload(payload)).toString('base64');
 
     res.json({
-      cv: payload.cv,
+      cv: cleanCv,
       meta: payload.meta,
       verified,
       prevPayloadB64,
     });
   } catch (err) {
-    console.error('[decode-pdf] error:', (err as Error).message);
-    res.status(500).json({ error: (err as Error).message });
+    console.error('[decode-pdf]', (err as Error).message);
+    res.status(500).json({ error: safeErrorMessage(err) });
   }
 });
 
@@ -353,28 +400,28 @@ app.post('/decode-pdf', decodeLimiter, express.raw({ type: 'application/pdf', li
 if (!IS_PROD) {
   app.post('/dev/pdf', async (req: Request, res: Response) => {
     try {
-      const { cv } = req.body as { cv?: CVData };
-      if (!cv) return res.status(400).json({ error: 'Missing cv' });
+      const cv = validateCV((req.body as { cv?: unknown })?.cv);
+      if (!cv) return res.status(400).json({ error: 'Invalid CV shape' });
       const now = new Date().toISOString();
       const meta = { createdAt: now, lastEditAt: now, editCount: 1, lastSentEmail: null };
-      // Sign internally so the update flow recognises this PDF when the
-      // user re-uploads it (otherwise /decode-pdf returns verified=false).
       const signature = signCV(cv);
       const publicKey = getPublicKey();
       const pdf = await renderLimit(() => renderPdf(cv, { meta, signature, publicKey }));
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="dev-${Date.now()}.pdf"`);
-      /* Mirror /pdf headers so the client's downloadPaidPdf gets a meta
-         in TEST mode too — drives the Badge UI without Stripe. */
       res.setHeader('X-CVeaver-Edit-Count', String(meta.editCount));
       res.setHeader('X-CVeaver-Created-At', meta.createdAt);
       res.send(pdf);
     } catch (err) {
-      res.status(500).json({ error: (err as Error).message });
+      res.status(500).json({ error: safeErrorMessage(err) });
     }
   });
   console.log('[server] /dev/pdf enabled (NODE_ENV !== production)');
 }
+
+/* ── Public key (offline verifiers) ─────────────────────── */
+
+app.get('/public-key', standardLimiter, (_req, res) => res.json(getPublicKey()));
 
 /* ── Support / complaints ─────────────────────────────── */
 
@@ -413,47 +460,49 @@ function appendComplaint(entry: ComplaintEntry): void {
 
 app.post('/support', supportLimiter, (req: Request, res: Response) => {
   try {
-    const { email, subject, message, keyId, hash, signedAt, author } = req.body || {};
-    if (!email || !subject || !message) {
+    const body = req.body || {};
+    const email   = typeof body.email   === 'string' ? body.email.slice(0, 256)   : '';
+    const subject = typeof body.subject === 'string' ? body.subject.slice(0, 256) : '';
+    const message = typeof body.message === 'string' ? body.message.slice(0, 8 * 1024) : '';
+    const author  = typeof body.author  === 'string' ? body.author.slice(0, 256)  : '';
+    const keyId    = typeof body.keyId    === 'string' && body.keyId.length    < 256 ? body.keyId    : null;
+    const hash     = typeof body.hash     === 'string' && body.hash.length     < 256 ? body.hash     : null;
+    const signedAt = typeof body.signedAt === 'string' && body.signedAt.length < 64  ? body.signedAt : null;
+
+    if (!email || !EMAIL_RE.test(email)) {
+      return res.status(400).json({ error: 'Invalid email' });
+    }
+    if (!subject || !message) {
       return res.status(400).json({ error: 'Missing fields' });
     }
-    if (String(message).length > 8 * 1024) {
+    if (message.length > 8 * 1024) {
       return res.status(413).json({ error: 'Message too large' });
     }
-    const id = generateId();
+
+    const id = randomId();
     const entry: ComplaintEntry = {
       id,
       receivedAt: new Date().toISOString(),
-      email:    String(email).slice(0, 256),
-      subject:  String(subject).slice(0, 256),
-      message:  String(message).slice(0, 8 * 1024),
-      keyId:    keyId ?? null,
-      hash:     hash ?? null,
-      signedAt: signedAt ?? null,
-      author:   String(author ?? '').slice(0, 256),
-      ip:       req.ip,
+      email, subject, message, keyId, hash, signedAt, author,
+      ip: req.ip,
     };
     appendComplaint(entry);
-    console.log(`[support] complaint ${id} from ${entry.email} re ${entry.keyId ?? 'unknown-key'}`);
+    console.log(`[support] complaint ${id.slice(0, 8)}… from ${redactEmail(email)} re ${keyId?.slice(0, 12) ?? 'unknown'}`);
     res.json({ ok: true, id });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    console.error('[support]', (err as Error).message);
+    res.status(500).json({ error: safeErrorMessage(err) });
   }
 });
 
-/**
- * Simplified verifier for the /support page. Returns only a boolean — no
- * keyId, hash or algorithm leak so the user-facing UI can't show signature
- * detail (per Sessão 22 requirement).
- */
 app.post('/verify-pdf', standardLimiter, (req: Request, res: Response) => {
   try {
-    const { cv, signature } = req.body || {};
-    if (!cv || typeof cv !== 'object') return res.status(400).json({ error: 'Missing cv' });
-    if (!signature) return res.json({ valid: false });
-    res.json({ valid: verifyCV(cv, signature) });
+    const body = req.body || {};
+    if (!body.cv || typeof body.cv !== 'object') return res.status(400).json({ error: 'Missing cv' });
+    if (!body.signature) return res.json({ valid: false });
+    res.json({ valid: verifyCV(body.cv, body.signature) });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    res.status(500).json({ error: safeErrorMessage(err) });
   }
 });
 
@@ -462,8 +511,15 @@ app.post('/verify-pdf', standardLimiter, (req: Request, res: Response) => {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('[unhandled]', err.message);
-  res.status(500).json({ error: 'Internal error' });
+  res.status(500).json({ error: safeErrorMessage(err) });
 });
+
+/* ── Periodic store prune ───────────────────────────────── */
+setInterval(() => {
+  const before = Object.keys(store).length;
+  store = pruneStore(store);
+  if (Object.keys(store).length !== before) saveStore(store);
+}, 60 * 60 * 1000).unref(); // hourly, don't keep the event loop alive
 
 /* ── Listen ────────────────────────────────────────────── */
 

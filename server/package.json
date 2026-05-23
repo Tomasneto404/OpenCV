@@ -14,7 +14,7 @@
     "express": "^4.19.2",
     "express-rate-limit": "^7.4.0",
     "helmet": "^8.0.0",
-    "nodemailer": "^6.9.16",
+    "nodemailer": "^8.0.7",
     "p-limit": "^6.1.0",
     "pdf-lib": "^1.17.1",
     "react": "^19.2.6",

@@ -16,7 +16,7 @@
  *     (`prevPayloadB64`) is passed back to the server when saving so the
  *     chain is tamper-evident.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Landing } from './components/Landing';
 import { Builder } from './components/Builder';
 import { Paid } from './components/Paid';
@@ -24,13 +24,14 @@ import { Support } from './components/Support';
 import { FAQ } from './components/FAQ';
 import { Terms } from './components/Terms';
 import { useCV } from './state/useCV';
-import { sampleCV } from './types';
 import type { CVData, CVMeta } from './types';
+import type { Locale } from './i18n/types';
 import { createCheckout, fetchCV, saveCV, verifySession } from './api';
 import { useToast } from './components/Toast';
 import { useT } from './i18n';
 import { PRICES, formatPrice } from './utils/format';
 import { buildSampleEnhanced } from './utils/sampleAssets';
+import { sampleCVByLocale } from './utils/sampleCvByLocale';
 
 // =====================================================================
 // FIXME: PAYMENT BYPASS — TEST MODE ONLY · REMOVE BEFORE PRODUCTION
@@ -68,6 +69,18 @@ export function App() {
   /** Stripe session + CV id used to redeem the paid PDF. */
   const [paidSessionId, setPaidSessionId] = useState<string | undefined>(undefined);
   const [paidCvId,      setPaidCvId]      = useState<string | undefined>(undefined);
+  /**
+   * When non-null, the CV currently in state is the localised sample —
+   * i.e. it was loaded via "Ver exemplo" / "loadSampleInBuilder" and the
+   * user has not yet touched anything. We use this flag to re-translate
+   * the demo when the user switches language inside the Builder. Once any
+   * user edit lands (handleEdit), we set this to null and the auto-retranslation stops.
+   */
+  const [sampleLocale, setSampleLocale] = useState<Locale | null>(null);
+  /* Suppress the "user-edit" listener while we ourselves are replacing
+     the CV because of a sample re-load (locale change). Otherwise the
+     subsequent replace() would set sampleLocale back to null. */
+  const replacingSampleRef = useRef(false);
   const toast = useToast();
   const { t, locale } = useT();
 
@@ -149,22 +162,51 @@ export function App() {
   };
 
   const loadSample = async () => {
-    // Load the demo CV + enrich with a profile photo (the CVeaver logo)
-    // and a fictional sample certificate so the certs UI/preview shows
-    // something out of the box.
-    const enriched = await buildSampleEnhanced(sampleCV());
+    // Load the demo CV (in the user's current locale) + enrich with the
+    // profile photo and a fictional sample certificate.
+    replacingSampleRef.current = true;
+    const enriched = await buildSampleEnhanced(sampleCVByLocale(locale));
     replace(enriched);
     setMode('new');
     setCurrentMeta(undefined);
     setPrevPayloadB64(undefined);
+    setSampleLocale(locale);
     navigate('/');
     setScreen('builder');
   };
 
   const loadSampleInBuilder = async () => {
-    const enriched = await buildSampleEnhanced(sampleCV());
+    replacingSampleRef.current = true;
+    const enriched = await buildSampleEnhanced(sampleCVByLocale(locale));
     replace(enriched);
+    setSampleLocale(locale);
   };
+
+  /* Wraps the useCV replace() for the Builder's onChange so any user-
+     initiated edit clears the sample flag. */
+  const handleEdit = useCallback((next: CVData) => {
+    if (replacingSampleRef.current) {
+      replacingSampleRef.current = false;
+    } else {
+      setSampleLocale(null);
+    }
+    replace(next);
+  }, [replace]);
+
+  /* Re-translate the sample whenever the locale changes — but only if
+     the current CV is still the untouched sample. */
+  useEffect(() => {
+    if (!sampleLocale || sampleLocale === locale) return;
+    let cancelled = false;
+    void (async () => {
+      replacingSampleRef.current = true;
+      const enriched = await buildSampleEnhanced(sampleCVByLocale(locale));
+      if (cancelled) return;
+      replace(enriched);
+      setSampleLocale(locale);
+    })();
+    return () => { cancelled = true; };
+  }, [locale, sampleLocale, replace]);
 
   const pay = async () => {
     setPaying(true);
@@ -226,7 +268,7 @@ export function App() {
       cv={cv}
       mode={mode}
       meta={currentMeta}
-      onChange={replace}
+      onChange={handleEdit}
       onBack={() => navigate('/')}
       onPay={pay}
       paying={paying}

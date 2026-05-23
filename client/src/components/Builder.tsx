@@ -33,6 +33,7 @@ import { useT } from '../i18n';
 import { PRICES, formatPrice } from '../utils/format';
 import { BrandMark } from './BrandMark';
 import { Badge } from './Badge';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import { BYPASS_PAYMENT_FOR_TESTING } from '../App';
 
 interface Props {
@@ -132,6 +133,10 @@ export function Builder({
               >dev: PDF</button>
             </>
           )}
+
+          <span className="mx-1 h-5 w-px bg-white/10" />
+
+          <LanguageSwitcher />
 
           <span className="mx-1 h-5 w-px bg-white/10" />
 

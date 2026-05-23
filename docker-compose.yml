@@ -1,36 +1,151 @@
+# =============================================================================
+# CVeaver production stack
+# -----------------------------------------------------------------------------
+# Two app services (server, client) behind Traefik for routing + TLS.
+# Traefik handles:
+#   - HTTP → HTTPS redirect (port 80 → 443)
+#   - Automatic Let's Encrypt certificates (TLS-ALPN-01 challenge)
+#   - www.cveaver.com → cveaver.com 301 redirect
+#   - Optional dashboard at traefik.${DOMAIN} (basic-auth protected)
+#
+# Required env (see .env.example):
+#   DOMAIN, ACME_EMAIL, TRAEFIK_DASHBOARD_AUTH (htpasswd format, $ escaped)
+#   STRIPE_SECRET_KEY, VITE_STRIPE_PUBLISHABLE_KEY
+#   RESEND_API_KEY, RESEND_FROM
+#
+# Volumes:
+#   traefik-acme   — Let's Encrypt cert store. Keep backed up.
+#   cveaver-keys   — Ed25519 + AES keys. **Backup is critical.**
+#                    Losing this volume makes every previously generated
+#                    PDF impossible to decode for the update flow.
+#   cveaver-data   — draft CVs + complaints (TTL 24h on drafts).
+# =============================================================================
+
 services:
 
-  server:
-    build: ./server
+  traefik:
+    image: traefik:v3.3
+    container_name: traefik
     restart: unless-stopped
+    command:
+      # Providers
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=traefik
+      # Entrypoints
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.tls.certresolver=le
+      # ACME (Let's Encrypt) — TLS-ALPN-01 needs port 443 open, no DNS config
+      - --certificatesresolvers.le.acme.email=${ACME_EMAIL:?ACME_EMAIL is required}
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.le.acme.tlschallenge=true
+      # Dashboard (protected via basic-auth — see labels)
+      - --api.dashboard=true
+      # Logs — tighten to INFO in prod
+      - --log.level=INFO
+      - --accesslog=true
+      - --accesslog.format=common
     ports:
-      - "3001:3001"
-    environment:
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
-      STRIPE_PAYMENT_METHODS: ${STRIPE_PAYMENT_METHODS:-card,multibanco}
-      CLIENT_URL: ${CLIENT_URL:-http://localhost}
-      PORT: 3001
-      DATA_DIR: /data
+      - "80:80"
+      - "443:443"
     volumes:
-      - easycv_data:/data
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-acme:/letsencrypt
+    networks:
+      - traefik
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dashboard.rule=Host(`traefik.${DOMAIN:?DOMAIN is required}`)
+      - traefik.http.routers.dashboard.entrypoints=websecure
+      - traefik.http.routers.dashboard.tls.certresolver=le
+      - traefik.http.routers.dashboard.service=api@internal
+      - traefik.http.routers.dashboard.middlewares=dashboard-auth
+      # TRAEFIK_DASHBOARD_AUTH = htpasswd entry, with $ doubled for compose.
+      # Generate: htpasswd -nb admin yourpassword | sed 's/\$/\$\$/g'
+      - traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH:-}
+
+  server:
+    build:
+      context: ./server
+    image: cveaver/server:latest
+    container_name: cveaver-server
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATA_DIR: /app/data
+      SIGN_KEY_DIR: /app/keys
+      CLIENT_URL: https://${DOMAIN}
+      # Stripe
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?STRIPE_SECRET_KEY is required}
+      STRIPE_PAYMENT_METHODS: ${STRIPE_PAYMENT_METHODS:-card,multibanco}
+      # Resend (email delivery)
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM: ${RESEND_FROM:-CVeaver <noreply@cveaver.com>}
+      # PDF tuning
+      PDF_CONCURRENCY: ${PDF_CONCURRENCY:-4}
+      # Optional: override the AES key (useful for multi-replica). When
+      # unset the key is generated on first boot inside cveaver-keys.
+      PAYLOAD_AES_KEY_B64: ${PAYLOAD_AES_KEY_B64:-}
+    volumes:
+      - cveaver-keys:/app/keys
+      - cveaver-data:/app/data
+    networks:
+      - traefik
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.api.rule=Host(`api.${DOMAIN}`)
+      - traefik.http.routers.api.entrypoints=websecure
+      - traefik.http.routers.api.tls.certresolver=le
+      - traefik.http.services.api.loadbalancer.server.port=3001
+      - traefik.http.routers.api.middlewares=api-headers@docker
+      # Hardening headers — duplicates of helmet for defence in depth.
+      - traefik.http.middlewares.api-headers.headers.frameDeny=true
+      - traefik.http.middlewares.api-headers.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.api-headers.headers.referrerPolicy=no-referrer
+      - traefik.http.middlewares.api-headers.headers.stsSeconds=31536000
+      - traefik.http.middlewares.api-headers.headers.stsIncludeSubdomains=true
 
   client:
     build:
       context: ./client
       args:
-        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY}
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+        VITE_API_URL: https://api.${DOMAIN:-cveaver.com}
+        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
+    image: cveaver/client:latest
+    container_name: cveaver-client
     restart: unless-stopped
-    ports:
-      - "80:80"
     depends_on:
       server:
         condition: service_healthy
+    networks:
+      - traefik
+    labels:
+      - traefik.enable=true
+      # Root domain
+      - traefik.http.routers.web.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.web.entrypoints=websecure
+      - traefik.http.routers.web.tls.certresolver=le
+      - traefik.http.services.web.loadbalancer.server.port=8080
+      # www → root permanent redirect (shares the `web` service)
+      - traefik.http.routers.www.rule=Host(`www.${DOMAIN}`)
+      - traefik.http.routers.www.entrypoints=websecure
+      - traefik.http.routers.www.tls.certresolver=le
+      - traefik.http.routers.www.service=web
+      - traefik.http.routers.www.middlewares=www-redirect@docker
+      - traefik.http.middlewares.www-redirect.redirectregex.regex=^https://www\.(.*)
+      - traefik.http.middlewares.www-redirect.redirectregex.replacement=https://$$1
+      - traefik.http.middlewares.www-redirect.redirectregex.permanent=true
 
 volumes:
-  easycv_data:
+  traefik-acme:
+  cveaver-keys:
+  cveaver-data:
+
+networks:
+  traefik:
+    name: traefik
+    driver: bridge

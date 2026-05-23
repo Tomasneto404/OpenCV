@@ -12,7 +12,7 @@ Sem registo. Sem subscrição. Sem PII guardada além do estritamente necessári
 - Form gratuito, com preview sempre visível
 - €1,00 para descarregar PDF (também enviado por email)
 - €0,50 para atualizar (carregas o PDF anterior, server reconhece via assinatura interna)
-- Custo marginal por PDF: ~300 ms de CPU server-side + envio SMTP
+- Custo marginal por PDF: ~300 ms de CPU server-side + 1 email via Resend
 
 ## Funcionalidades
 
@@ -42,46 +42,39 @@ Sem registo. Sem subscrição. Sem PII guardada além do estritamente necessári
 
 > ⚠️ **Backup obrigatório de `server/keys/`** (AES + Ed25519). Se a chave AES se perder, todos os PDFs anteriores ficam ilegíveis ao update flow.
 
-## Arranque rápido
+## Arranque rápido (dev)
 
 ```bash
-cp .env.example .env       # preencher chaves Stripe + SMTP
+cp .env.example .env       # preencher Stripe + Resend
 npm run install:all
 npm run dev                # client :5173, server :3001
 ```
 
 ### Variáveis de ambiente
 
-**Server (`.env`):**
+Único `.env` na raiz cobre client + server + Traefik. Detalhes em [.env.example](.env.example).
 
 | Variável | Obrigatória | Descrição |
 |----------|-------------|-----------|
-| `STRIPE_SECRET_KEY` | sim | `sk_live_...` ou `sk_test_...` |
+| `DOMAIN` | em prod | dominío base (`cveaver.com`). Traefik serve `${DOMAIN}` + `api.${DOMAIN}` + `traefik.${DOMAIN}` |
+| `ACME_EMAIL` | em prod | email Let's Encrypt para avisos de renovação |
+| `TRAEFIK_DASHBOARD_AUTH` | opcional | htpasswd `admin:$$apr1$$…` para o dashboard |
+| `STRIPE_SECRET_KEY` | sim | `sk_live_...` (ou `sk_test_...` em staging) |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | sim | `pk_live_...` para o client |
 | `STRIPE_PAYMENT_METHODS` | não | `card,multibanco,mb_way` (default: `card,multibanco`) |
-| `CLIENT_URL` | sim | URL do client em produção |
-| `PORT` | não | default 3001 |
-| `NODE_ENV` | sim em prod | `production` desactiva `/dev/pdf` |
+| `RESEND_API_KEY` | recomendado | sem key, o email é silenciosamente omitido |
+| `RESEND_FROM` | recomendado | `CVeaver <noreply@cveaver.com>`. **O domínio tem de estar verificado no Resend** (DKIM/DMARC) |
 | `PDF_CONCURRENCY` | não | default 4 |
-| `SMTP_HOST` | recomendado | sem SMTP, o email é silenciosamente omitido |
-| `SMTP_PORT` | não | default 587 |
-| `SMTP_USER` / `SMTP_PASS` | recomendado | credenciais |
-| `SMTP_FROM` | não | default = `SMTP_USER` |
-| `SMTP_SECURE` | não | `true` para força TLS |
-| `SIGN_KEY_DIR` | não | override path para `server/keys/` |
-| `PAYLOAD_AES_KEY_B64` | não | override AES key (base64) — útil para multi-replica |
-
-**Client (`.env`):**
-
-| Variável | Descrição |
-|----------|-----------|
-| `VITE_API_URL` | URL do server (default `http://localhost:3001`) |
+| `PAYLOAD_AES_KEY_B64` | não | override AES key (base64). Por defeito é gerado e persistido no volume |
 
 ## Stack
 
 - **Client**: React 19 + TypeScript + Vite + Tailwind v4 + `@dnd-kit/sortable` + `pdfjs-dist` (lazy)
-- **Server**: Express 4 + TypeScript via `tsx` (runtime ESM loader) + `@react-pdf/renderer` + `pdf-lib` + `nodemailer` + Helmet + `express-rate-limit` + `p-limit`
+- **Server**: Express 4 + TypeScript via `tsx` (runtime ESM loader) + `@react-pdf/renderer` + `pdf-lib` + Helmet + `express-rate-limit` + `p-limit`
+- **Email**: [Resend](https://resend.com) (com domínio verificado DKIM/DMARC)
 - **Pagamentos**: Stripe Checkout (cartão, Multibanco; MB WAY opcional)
-- **Persistência**: ficheiro JSON local em `server/data/` (sem DB; gitignored)
+- **Reverse proxy / TLS**: Traefik v3 com Let's Encrypt (TLS-ALPN-01)
+- **Persistência**: ficheiro JSON local em volume Docker (sem DB; TTL 24h nos drafts)
 - **PDF storage**: o ficheiro carrega encriptado dentro de si mesmo o CV + meta + assinatura para suportar o update flow sem servidor a guardar PII
 
 ## Endpoints
@@ -100,17 +93,78 @@ npm run dev                # client :5173, server :3001
 | `GET`  | `/public-key` | — | Ed25519 public key (para verificadores offline) |
 | `POST` | `/dev/pdf` | DEV only | gera + assina sem Stripe — desligado em produção |
 
-## Deploy
+## Deploy (Traefik self-host)
 
-Self-hosted: **Coolify / Dokploy** (Docker compose já incluído).
+A stack inteira corre via um único `docker compose up -d` numa VPS ou homelab.
 
-Steps:
-1. Definir todos os env vars listados acima — em particular as chaves Stripe live e o SMTP
-2. Garantir que o volume de `server/keys/` tem **backup** (geração das chaves só acontece no primeiro arranque; perder = update flow quebrado)
-3. `CLIENT_URL=https://cveaver.com` no server, `VITE_API_URL=https://api.cveaver.com` no build do client
-4. `NODE_ENV=production` garante que `/dev/pdf` fica desactivado
+### 1. Pré-requisitos
 
-Alternativas: Railway / Render / Fly.io (server) · Vercel / Netlify / Caddy (client).
+- VPS / homelab com Docker + Docker Compose
+- Domínio com DNS apontado:
+  - `cveaver.com  → IP do servidor`
+  - `api.cveaver.com → IP do servidor`
+  - `www.cveaver.com → IP do servidor`
+  - `traefik.cveaver.com → IP do servidor` (opcional, dashboard)
+- Portos 80/443 abertos no firewall
+- Conta [Stripe](https://stripe.com) com chaves live + Multibanco/MB WAY activos
+- Conta [Resend](https://resend.com) com domínio verificado (DKIM/DMARC OK)
+
+### 2. Setup inicial
+
+```bash
+git clone https://github.com/Tomasneto404/CVeaver.git
+cd CVeaver
+cp .env.example .env
+$EDITOR .env                    # preencher tudo o que está marcado :?required
+
+# Dashboard Traefik (opcional, basic-auth)
+htpasswd -nb admin minha_password_forte | sed 's/\$/\$\$/g'
+# → copia o resultado para TRAEFIK_DASHBOARD_AUTH
+
+docker compose up -d --build
+```
+
+Traefik resolve TLS automaticamente — primeiro arranque demora ~30 s a aprovisionar os certificados Let's Encrypt para `cveaver.com`, `api.cveaver.com`, `www.cveaver.com` (e `traefik.cveaver.com` se configurares basic-auth).
+
+### 3. Verificar
+
+```bash
+# Health probes
+curl https://api.cveaver.com/health
+curl -I https://cveaver.com
+
+# Traefik logs
+docker compose logs -f traefik
+
+# Server logs (PDF deliveries, email status)
+docker compose logs -f server
+```
+
+### 4. Backup crítico
+
+Dois volumes precisam de backup periódico:
+
+- **`cveaver-keys`** — Ed25519 + AES keys. Perder = todos os PDFs anteriores ficam ilegíveis para o update flow. **Backup obrigatório.**
+- **`traefik-acme`** — Let's Encrypt cert store. Perder = nova provisão na próxima reinicialização (rate-limited por LE, evitar fazer flush sem necessidade).
+
+Exemplo (cron diário):
+
+```bash
+docker run --rm -v cveaver-keys:/src -v /backup:/dst alpine \
+  tar czf /dst/cveaver-keys-$(date +%F).tar.gz -C /src .
+```
+
+### 5. Em Coolify / Dokploy
+
+A compose file funciona tal-como-está em Coolify — basta apontar o repositório e definir as env vars na UI. Coolify gere o seu próprio Traefik por baixo; deixar o `traefik` service do compose **desactivado** (ou usar o ficheiro só para builds, configurando o routing via Coolify labels) é a opção mais limpa para evitar duplo proxy.
+
+Para um simples push-to-deploy via GitHub Actions ou Coolify auto-webhook: ambos vão fazer `docker compose up -d --build`.
+
+### Honest call-outs
+
+- O `BYPASS_PAYMENT_FOR_TESTING` no client tem de ser revertido antes do deploy live — passo-a-passo em [.claude/REVERT_BEFORE_PROD.md](.claude/REVERT_BEFORE_PROD.md).
+- Resend free tier (100 emails/dia) é mais que suficiente para arranque. Para volumes maiores subir para o tier pago.
+- Stripe live keys precisam de Multibanco/MB WAY activado nas [definições de payment methods](https://dashboard.stripe.com/settings/payment_methods).
 
 ## Estrutura
 
@@ -127,7 +181,8 @@ server/
   index.ts           # Express + endpoints
   sign.js            # Ed25519 keypair + canonical sign/verify
   crypto.js          # AES-256-GCM payload encrypt/decrypt
-  mail.ts            # nodemailer wrapper
+  mail.ts            # Resend wrapper
+  security.ts        # input validators, safe-err, redact, randomId
   pdf/render.ts      # template-aware framed cert renderer
   pdf/read.ts        # decrypt payload from uploaded PDF
   pdf/templates/     # 5 @react-pdf renderers

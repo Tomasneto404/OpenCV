@@ -193,6 +193,14 @@ export function App() {
     replace(next);
   }, [replace]);
 
+  /* Clear / undo / redo bypass `handleEdit` (they touch the CV state
+     directly via useCV). If we don't also drop the sample flag here, a
+     user who clears the form and then switches language sees the sample
+     pop back in. Same logic for undo/redo. */
+  const handleClear = useCallback(() => { setSampleLocale(null); clear(); }, [clear]);
+  const handleUndo  = useCallback(() => { setSampleLocale(null); undo();  }, [undo]);
+  const handleRedo  = useCallback(() => { setSampleLocale(null); redo();  }, [redo]);
+
   /* Re-translate the sample whenever the locale changes — but only if
      the current CV is still the untouched sample. */
   useEffect(() => {
@@ -272,9 +280,9 @@ export function App() {
       onBack={() => navigate('/')}
       onPay={pay}
       paying={paying}
-      onUndo={undo}
-      onRedo={redo}
-      onClear={clear}
+      onUndo={handleUndo}
+      onRedo={handleRedo}
+      onClear={handleClear}
       canUndo={canUndo}
       canRedo={canRedo}
       saving={saving}

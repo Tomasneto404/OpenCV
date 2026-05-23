@@ -28,14 +28,17 @@ export interface PaidPdfResult {
 export async function downloadPaidPdf(sessionId: string, cvId: string, { filename }: DownloadOptions): Promise<PaidPdfResult> {
   // FIXME: TEST MODE — when App.tsx sets sessionId='TEST', skip the paywall
   // and call /dev/pdf instead. Remove this branch when re-enabling Stripe.
+  // We also pass cv.personal.email as customerEmail so the dev endpoint can
+  // exercise the real Resend → inbox flow in test mode.
   if (sessionId === 'TEST') {
     const cvRes = await fetch(`${API_URL}/cv/${encodeURIComponent(cvId)}`);
     if (!cvRes.ok) throw new Error(`Could not load CV (${cvRes.status})`);
     const cv = await cvRes.json();
+    const customerEmail = typeof cv?.personal?.email === 'string' ? cv.personal.email : undefined;
     const pdfRes = await fetch(`${API_URL}/dev/pdf`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cv }),
+      body: JSON.stringify({ cv, customerEmail }),
     });
     if (!pdfRes.ok) throw new Error(`Server returned ${pdfRes.status}`);
     const meta = parseMetaHeaders(pdfRes.headers);

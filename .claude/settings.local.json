@@ -39,7 +39,8 @@
       "Bash(curl -s -X POST http://localhost:3001/decode-pdf -H 'Content-Type: application/pdf' --data-binary @/tmp/crypto-test.pdf)",
       "Bash(xxd /tmp/rt-test.pdf)",
       "Bash(curl -s http://localhost:5173/)",
-      "Bash(git -C /Users/tomasneto/Documents/Coding/easyCV push)"
+      "Bash(git -C /Users/tomasneto/Documents/Coding/easyCV push)",
+      "Bash(/usr/bin/python3 *)"
     ]
   }
 }

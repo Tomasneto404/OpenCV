@@ -398,19 +398,64 @@ app.post('/decode-pdf', decodeLimiter, express.raw({ type: 'application/pdf', li
 /* ── Dev-only PDF endpoint (no paywall, no meta increment) ── */
 
 if (!IS_PROD) {
+  /* Send a quick Resend smoke email — confirms RESEND_API_KEY + sender
+     domain are wired correctly without going through the Stripe paywall. */
+  app.get('/dev/test-email', async (req: Request, res: Response) => {
+    if (!process.env.RESEND_API_KEY) {
+      return res.status(503).json({ error: 'RESEND_API_KEY not configured' });
+    }
+    const to = String(req.query.to ?? '');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      return res.status(400).json({ error: 'Pass ?to=email@example.com' });
+    }
+    const now = new Date().toISOString();
+    const meta = { createdAt: now, lastEditAt: now, editCount: 1, lastSentEmail: to };
+    const fakeCv: CVData = {
+      version: 1, template: 'modern', accentColor: '#5b3a11',
+      personal: { fullName: 'CVeaver Test', headline: 'Resend smoke', email: to, phone: '', location: '', website: '', linkedin: '', github: '' },
+      summary: '', experience: [], education: [], skills: [], languages: [], projects: [], certificates: [],
+    };
+    const signature = signCV(fakeCv);
+    const publicKey = getPublicKey();
+    const pdf = await renderLimit(() => renderPdf(fakeCv, { meta, signature, publicKey }));
+    const ok = await sendCvByEmail({ to, pdf, filename: 'cveaver-test.pdf', fullName: 'CVeaver Test' });
+    res.json({ ok, to });
+  });
+
   app.post('/dev/pdf', async (req: Request, res: Response) => {
     try {
-      const cv = validateCV((req.body as { cv?: unknown })?.cv);
+      const body = req.body as { cv?: unknown; customerEmail?: unknown };
+      const cv = validateCV(body?.cv);
       if (!cv) return res.status(400).json({ error: 'Invalid CV shape' });
+
+      const rawEmail = typeof body.customerEmail === 'string' ? body.customerEmail : '';
+      const customerEmail = (rawEmail && EMAIL_RE.test(rawEmail) && rawEmail.length < 256) ? rawEmail : null;
+
       const now = new Date().toISOString();
-      const meta = { createdAt: now, lastEditAt: now, editCount: 1, lastSentEmail: null };
+      const meta = { createdAt: now, lastEditAt: now, editCount: 1, lastSentEmail: customerEmail };
       const signature = signCV(cv);
       const publicKey = getPublicKey();
       const pdf = await renderLimit(() => renderPdf(cv, { meta, signature, publicKey }));
+
+      const filename = safeFilename(`${cv.personal.fullName || 'cv'}.pdf`);
+
+      // Fire email in the background — don't block the download response.
+      if (customerEmail) {
+        void sendCvByEmail({
+          to: customerEmail,
+          pdf,
+          filename,
+          fullName: cv.personal.fullName,
+        }).then((ok) => {
+          console.log(`[dev/mail] ${ok ? 'sent' : 'skipped/failed'} → ${redactEmail(customerEmail)}`);
+        });
+      }
+
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="dev-${Date.now()}.pdf"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('X-CVeaver-Edit-Count', String(meta.editCount));
       res.setHeader('X-CVeaver-Created-At', meta.createdAt);
+      if (customerEmail) res.setHeader('X-CVeaver-Last-Sent-Email', customerEmail);
       res.send(pdf);
     } catch (err) {
       res.status(500).json({ error: safeErrorMessage(err) });

@@ -8,11 +8,30 @@ const SIDEBAR_W = 175;
 
 function makeStyles(accent: string) {
   return StyleSheet.create({
-    page: { fontFamily: 'Helvetica', fontSize: 10, color: PALETTE.ink, backgroundColor: PALETTE.white },
+    page: {
+      fontFamily: 'Helvetica', fontSize: 10,
+      color: PALETTE.ink, backgroundColor: PALETTE.white,
+      /* Explicit 0 so no react-pdf default padding leaks under the
+         sidebar accent (was producing a faint stripe / non-flush edge). */
+      padding: 0, margin: 0,
+    },
 
-    sidebar: {
-      position: 'absolute', top: 0, left: 0, bottom: 0, width: SIDEBAR_W,
-      backgroundColor: accent, color: PALETTE.white, padding: 18,
+    /* Accent stripe that runs the full height of every page. Empty —
+       deliberately — so multi-page CVs get a flush sidebar without the
+       avatar/name/contacts repeated on every page. */
+    sidebarBg: {
+      position: 'absolute', top: 0, left: 0, bottom: 0, right: undefined,
+      width: SIDEBAR_W,
+      backgroundColor: accent,
+    },
+    /* Content stacked on top of the accent stripe — page 1 only. When
+       the CV overflows to page 2, only the bare accent stripe shows on
+       the left, which reads as much cleaner. */
+    sidebarContent: {
+      position: 'absolute', top: 0, left: 0,
+      width: SIDEBAR_W,
+      padding: 18,
+      color: PALETTE.white,
     },
     main: { marginLeft: SIDEBAR_W, padding: '26 26 30 26' },
 
@@ -86,8 +105,11 @@ export function ModernPdf({ cv }: Props) {
   return (
     <Document title={p.fullName || 'CV'} author={p.fullName} producer="CVeaver">
       <Page size="A4" style={s.page} wrap>
-        {/* Sidebar — fixed so it repeats on every page */}
-        <View style={s.sidebar} fixed>
+        {/* Accent stripe — repeats on every page (just the colour) */}
+        <View style={s.sidebarBg} fixed />
+
+        {/* Sidebar content — only on page 1; pages 2+ get a clean stripe */}
+        <View style={s.sidebarContent}>
           <View style={s.avatarWrap}>
             {p.photoDataUrl ? (
               <Image src={p.photoDataUrl} style={s.avatar} />

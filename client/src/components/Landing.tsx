@@ -104,7 +104,21 @@ export function Landing({ onNew, onLoadConfig, onSample, onNavigate }: Props) {
           className="inline-flex items-center gap-2 text-[12.5px] font-medium text-[color:var(--color-ink-muted)] mb-6 px-3 py-1.5 rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-glass-bg)] backdrop-blur animate-rise"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-accent-500)]" />
-          {t('landing.hero.badge')}
+          {(() => {
+            // Wrap the "PII" token in an <abbr> so hovering explains it.
+            const parts = t('landing.hero.badge').split('PII');
+            if (parts.length === 1) return parts[0];
+            return (
+              <span>
+                {parts[0]}
+                <abbr
+                  title={t('landing.hero.piiTooltip')}
+                  className="cursor-help no-underline border-b border-dotted border-current"
+                >PII</abbr>
+                {parts.slice(1).join('PII')}
+              </span>
+            );
+          })()}
         </div>
 
         <h1 className="text-[40px] sm:text-[56px] font-bold leading-[1.05] tracking-[-0.025em] animate-rise" style={{ fontFamily: 'Fraunces, serif' }}>

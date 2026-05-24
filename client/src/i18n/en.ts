@@ -34,6 +34,7 @@ export const dict: Dict = {
     },
     hero: {
       badge: 'No sign-up · No subscription · No PII stored',
+      piiTooltip: 'PII (Personally Identifiable Information) — personal data that identifies someone, such as name, email or phone. We store none of it.',
       title: 'Your CV,',
       titleAccent: 'ready in minutes',
       subtitle: 'Fill the form, see the live preview, pay {price} and download the PDF — we also email you a copy. Update later for just {updatePrice}.',

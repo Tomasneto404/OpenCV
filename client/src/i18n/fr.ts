@@ -13,6 +13,7 @@ export const dict: Dict = {
     nav: { howItWorks: 'Comment ça marche', support: 'Support', faq: 'FAQ', terms: 'Conditions' },
     hero: {
       badge: 'Sans inscription · Sans abonnement · Aucune PII stockée',
+      piiTooltip: 'PII (Personally Identifiable Information) — données personnelles qui identifient quelqu\'un, comme le nom, l\'e-mail ou le téléphone. Nous n\'en stockons aucune.',
       title: 'Votre CV,',
       titleAccent: 'prêt en quelques minutes',
       subtitle: 'Remplissez le formulaire, voyez l\'aperçu en direct, payez {price} et téléchargez le PDF — vous le recevez aussi par e-mail. Mettez à jour plus tard pour seulement {updatePrice}.',

@@ -48,6 +48,7 @@ export const dict = {
     },
     hero: {
       badge: 'Sem registo · Sem subscrição · Sem PII guardado',
+      piiTooltip: 'PII (Personally Identifiable Information) — dados pessoais que identificam alguém, como nome, email ou telefone. Não guardamos nada disso.',
       title: 'O teu CV,',
       titleAccent: 'pronto em minutos',
       subtitle: 'Preenche o formulário, vê o preview ao vivo, paga {price} e descarrega o PDF — também recebes uma cópia por email. Atualiza mais tarde por apenas {updatePrice}.',

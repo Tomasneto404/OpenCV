@@ -86,6 +86,12 @@ export function validateCV(input: unknown): CVData | null {
   if (cv.summary !== undefined && typeof cv.summary !== 'string') return null;
   if (typeof cv.summary === 'string' && cv.summary.length > 4096) return null;
 
+  // Locale must be one of the supported codes if present.
+  if (cv.locale !== undefined) {
+    if (typeof cv.locale !== 'string') return null;
+    if (!['pt', 'en', 'es', 'fr', 'de'].includes(cv.locale)) return null;
+  }
+
   return cv as unknown as CVData;
 }
 

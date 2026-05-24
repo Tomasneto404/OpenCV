@@ -10,7 +10,7 @@
 #
 # Required env (see .env.example):
 #   DOMAIN, ACME_EMAIL, TRAEFIK_DASHBOARD_AUTH (htpasswd format, $ escaped)
-#   STRIPE_SECRET_KEY, VITE_STRIPE_PUBLISHABLE_KEY
+#   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, VITE_STRIPE_PUBLISHABLE_KEY
 #   RESEND_API_KEY, RESEND_FROM
 #
 # Volumes:
@@ -81,7 +81,10 @@ services:
       CLIENT_URL: https://${DOMAIN}
       # Stripe
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?STRIPE_SECRET_KEY is required}
-      STRIPE_PAYMENT_METHODS: ${STRIPE_PAYMENT_METHODS:-card,multibanco}
+      # Webhook signing secret — required to fulfil async payments (Multibanco/MB WAY).
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      # Empty → Dynamic Payment Methods (controlled in the Stripe Dashboard).
+      STRIPE_PAYMENT_METHODS: ${STRIPE_PAYMENT_METHODS:-}
       # Resend (email delivery)
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM: ${RESEND_FROM:-CVeaver <noreply@cveaver.com>}

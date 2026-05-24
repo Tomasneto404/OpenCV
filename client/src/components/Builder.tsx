@@ -33,8 +33,9 @@ import { useT } from '../i18n';
 import { PRICES, formatPrice } from '../utils/format';
 import { BrandMark } from './BrandMark';
 import { Badge } from './Badge';
+import { BetaBadge } from './BetaBadge';
 import { LanguageSwitcher } from './LanguageSwitcher';
-import { BYPASS_PAYMENT_FOR_TESTING } from '../App';
+import { BYPASS_PAYMENT_FOR_TESTING, BETA_PAYMENTS } from '../App';
 
 interface Props {
   cv: CVData;
@@ -100,6 +101,7 @@ export function Builder({
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button className="btn-ghost text-sm shrink-0" onClick={onBack} title={t('builder.backTitle')}>←</button>
           <BrandMark size={36} className="shrink-0" />
+          <BetaBadge className="shrink-0" />
           {meta && <Badge meta={meta} compact />}
           <SaveIndicator saving={saving} t={t} />
         </div>
@@ -166,6 +168,13 @@ export function Builder({
       {BYPASS_PAYMENT_FOR_TESTING && (
         <div className="px-4 sm:px-6 py-2 text-[12px] text-amber-100 bg-amber-600/30 border-b border-amber-400/40 text-center font-medium tracking-wide">
           ⚠ TEST MODE — botão de pagar ignora o Stripe e descarrega directo. Lembra-te de remover antes de produção.
+        </div>
+      )}
+
+      {/* Beta banner — payments not live yet. Hidden once BETA_PAYMENTS is off. */}
+      {BETA_PAYMENTS && !BYPASS_PAYMENT_FOR_TESTING && (
+        <div className="px-4 sm:px-6 py-2 text-[12px] text-amber-200/90 bg-amber-500/10 border-b border-amber-400/15 text-center">
+          {t('beta.banner')}
         </div>
       )}
 

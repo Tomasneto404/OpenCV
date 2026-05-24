@@ -72,6 +72,8 @@ export interface CertificateItem {
   framed?: boolean;
 }
 
+export type Locale = 'pt' | 'en' | 'es' | 'fr' | 'de';
+
 export interface CVData {
   version: 1;
   template: TemplateId;
@@ -84,6 +86,8 @@ export interface CVData {
   languages: LanguageItem[];
   projects: ProjectItem[];
   certificates?: CertificateItem[];
+  /** Locale the PDF templates render labels in. Defaults to 'pt'. */
+  locale?: Locale;
 }
 
 export interface SignatureEnvelope {

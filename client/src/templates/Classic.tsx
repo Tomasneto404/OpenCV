@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import type { CVData } from '../types';
+import { labelsForLocale } from '../utils/cvLabels';
+import { useT } from '../i18n';
 
 interface Props { cv: CVData; }
 
@@ -27,6 +29,8 @@ function Bullets({ text }: { text: string }) {
 export function ClassicTemplate({ cv }: Props) {
   const accent = cv.accentColor || '#1f2937';
   const { personal: p } = cv;
+  const { locale } = useT();
+  const SEC = labelsForLocale(cv.locale ?? locale).sections;
 
   return (
     <div className="cv-surface" style={{
@@ -64,7 +68,7 @@ export function ClassicTemplate({ cv }: Props) {
       )}
 
       {cv.experience.length > 0 && (
-        <Section title="Experiência Profissional" accent={accent}>
+        <Section title={SEC.experience} accent={accent}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {cv.experience.map((it) => (
               <div key={it.id}>
@@ -85,7 +89,7 @@ export function ClassicTemplate({ cv }: Props) {
       )}
 
       {cv.education.length > 0 && (
-        <Section title="Formação" accent={accent}>
+        <Section title={SEC.education} accent={accent}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {cv.education.map((it) => (
               <div key={it.id}>
@@ -108,7 +112,7 @@ export function ClassicTemplate({ cv }: Props) {
       )}
 
       {cv.skills.length > 0 && (
-        <Section title="Competências" accent={accent}>
+        <Section title={SEC.skills} accent={accent}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {cv.skills.map((g) => (
               <div key={g.id} style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55 }}>
@@ -121,7 +125,7 @@ export function ClassicTemplate({ cv }: Props) {
       )}
 
       {cv.projects.length > 0 && (
-        <Section title="Projetos" accent={accent}>
+        <Section title={SEC.projects} accent={accent}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {cv.projects.map((proj) => (
               <div key={proj.id}>
@@ -138,7 +142,7 @@ export function ClassicTemplate({ cv }: Props) {
       )}
 
       {cv.languages.length > 0 && (
-        <Section title="Idiomas" accent={accent}>
+        <Section title={SEC.languages} accent={accent}>
           <div style={{ fontSize: 13, color: C.inkSoft }}>
             {cv.languages.map((l, i) => (
               <span key={l.id}>

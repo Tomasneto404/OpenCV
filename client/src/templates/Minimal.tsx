@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import type { CVData } from '../types';
+import { labelsForLocale } from '../utils/cvLabels';
+import { useT } from '../i18n';
 
 interface Props { cv: CVData; }
 
@@ -28,6 +30,8 @@ function Lines({ text }: { text: string }) {
 export function MinimalTemplate({ cv }: Props) {
   const accent = cv.accentColor || '#0f172a';
   const { personal: p } = cv;
+  const { locale } = useT();
+  const SEC = labelsForLocale(cv.locale ?? locale).sections;
 
   return (
     <div className="cv-surface" style={{
@@ -65,7 +69,7 @@ export function MinimalTemplate({ cv }: Props) {
       )}
 
       {cv.experience.length > 0 && (
-        <Block title="Experiência" accent={accent}>
+        <Block title={SEC.experience} accent={accent}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
             {cv.experience.map((it) => (
               <div key={it.id} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: 18 }}>
@@ -86,7 +90,7 @@ export function MinimalTemplate({ cv }: Props) {
       )}
 
       {cv.projects.length > 0 && (
-        <Block title="Projetos" accent={accent}>
+        <Block title={SEC.projects} accent={accent}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {cv.projects.map((proj) => (
               <div key={proj.id} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: 18 }}>
@@ -105,7 +109,7 @@ export function MinimalTemplate({ cv }: Props) {
       )}
 
       {cv.education.length > 0 && (
-        <Block title="Formação" accent={accent}>
+        <Block title={SEC.education} accent={accent}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {cv.education.map((it) => (
               <div key={it.id} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: 18 }}>

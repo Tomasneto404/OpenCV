@@ -20,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Landing } from './components/Landing';
 import { Builder } from './components/Builder';
 import { Paid } from './components/Paid';
+import { Pending } from './components/Pending';
 import { Support } from './components/Support';
 import { FAQ } from './components/FAQ';
 import { Terms } from './components/Terms';
@@ -45,9 +46,23 @@ import { sampleCVByLocale } from './utils/sampleCvByLocale';
 // Set to `false` (or delete the branch in pay() below) before deploying.
 // The Builder shows a loud amber banner whenever this is on.
 // =====================================================================
-export const BYPASS_PAYMENT_FOR_TESTING = true;
+export const BYPASS_PAYMENT_FOR_TESTING = false;
 
-type Screen = 'landing' | 'builder' | 'paid' | 'support' | 'faq' | 'terms';
+// =====================================================================
+// BETA flag — payments are not live yet (Stripe in TEST mode).
+// =====================================================================
+// While true, the UI shows a "Beta" badge + a banner telling visitors the
+// payment flow is still in testing (no real charges). The checkout itself
+// still runs against Stripe TEST keys.
+//
+// To go live it should be enough to:
+//   1. Swap the Stripe keys to live (sk_live_… on the server,
+//      VITE_STRIPE_PUBLISHABLE_KEY=pk_live_… if/when used client-side).
+//   2. Set this flag to `false`.
+// =====================================================================
+export const BETA_PAYMENTS = true;
+
+type Screen = 'landing' | 'builder' | 'paid' | 'pending' | 'support' | 'faq' | 'terms';
 
 function pathToScreen(path: string): Screen {
   if (path.startsWith('/support') || path.startsWith('/verify')) return 'support';
@@ -106,7 +121,8 @@ export function App() {
     if (success === 'true' && sessionId && cvId) {
       void (async () => {
         const result = await verifySession(sessionId);
-        if (result.paid) {
+        if (result.paid || result.status) {
+          // Restore the paid CV so the Preview matches what was bought.
           try {
             const fetched = await fetchCV(cvId);
             replace(fetched);
@@ -114,9 +130,15 @@ export function App() {
             /* fall back to whatever's in localStorage */
           }
           if (kind) setMode(kind);
+        }
+        if (result.paid) {
           setPaidSessionId(sessionId);
           setPaidCvId(cvId);
           setScreen('paid');
+        } else if (result.status) {
+          // Session is valid but not yet paid → async method (Multibanco /
+          // MB WAY). The webhook will email the PDF once payment confirms.
+          setScreen('pending');
         }
         window.history.replaceState({}, '', '/');
       })();
@@ -220,7 +242,10 @@ export function App() {
     setPaying(true);
     try {
       const customerEmail = currentMeta?.lastSentEmail ?? undefined;
-      const id = await saveCV(cv, { prevPayloadB64, customerEmail });
+      // Lock the CV's label language to the current UI locale at pay time,
+      // so the generated PDF renders section headings in that language.
+      const cvToSave: CVData = { ...cv, locale };
+      const id = await saveCV(cvToSave, { prevPayloadB64, customerEmail });
 
       if (BYPASS_PAYMENT_FOR_TESTING) {
         // TEST MODE — skip Stripe and jump to Paid screen. The Paid screen's
@@ -240,6 +265,21 @@ export function App() {
       setPaying(false);
     }
   };
+
+  if (screen === 'pending') {
+    return (
+      <Pending
+        cv={cv}
+        onReset={() => {
+          hardReset();
+          setCurrentMeta(undefined);
+          setPrevPayloadB64(undefined);
+          setMode('new');
+          navigate('/');
+        }}
+      />
+    );
+  }
 
   if (screen === 'support') return <Support onBack={() => navigate('/')} />;
   if (screen === 'faq')     return <FAQ     onBack={() => navigate('/')} onNavigate={navigate} />;

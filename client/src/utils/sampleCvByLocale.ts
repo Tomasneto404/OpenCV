@@ -15,14 +15,19 @@ import { newId } from '../types';
 const ACCENT = '#5b3a11';
 
 export function sampleCVByLocale(locale: Locale): CVData {
-  switch (locale) {
-    case 'en': return sampleEN();
-    case 'es': return sampleES();
-    case 'fr': return sampleFR();
-    case 'de': return sampleDE();
-    case 'pt':
-    default:   return samplePT();
-  }
+  const base = (() => {
+    switch (locale) {
+      case 'en': return sampleEN();
+      case 'es': return sampleES();
+      case 'fr': return sampleFR();
+      case 'de': return sampleDE();
+      case 'pt':
+      default:   return samplePT();
+    }
+  })();
+  // Tag the CV with its locale so the templates (preview + PDF) render
+  // section labels in the matching language.
+  return { ...base, locale };
 }
 
 /* ── PT ─────────────────────────────────────────────────── */

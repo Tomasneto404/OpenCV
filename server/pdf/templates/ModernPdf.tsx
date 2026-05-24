@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer';
 import type { CVData } from '../../types';
 import { PALETTE, bullets, withAlpha } from '../common';
+import { labelsFor } from '../labels';
 
 interface Props { cv: CVData; }
 
@@ -101,6 +102,9 @@ export function ModernPdf({ cv }: Props) {
   const accent = cv.accentColor || '#1e3a8a';
   const s = makeStyles(accent);
   const p = cv.personal;
+  const L = labelsFor(cv.locale);
+  const SEC = L.sections;
+  const CL  = L.contactLabels;
 
   return (
     <Document title={p.fullName || 'CV'} author={p.fullName} producer="CVeaver">
@@ -120,14 +124,14 @@ export function ModernPdf({ cv }: Props) {
             {p.headline && <Text style={s.headline}>{p.headline}</Text>}
           </View>
 
-          <Text style={s.sideHeading}>CONTACTO</Text>
+          <Text style={s.sideHeading}>{SEC.contact.toUpperCase()}</Text>
           {[
-            ['Email',    p.email],
-            ['Telefone', p.phone],
-            ['Local',    p.location],
-            ['Web',      p.website],
-            ['LinkedIn', p.linkedin],
-            ['GitHub',   p.github],
+            [CL.email,    p.email],
+            [CL.phone,    p.phone],
+            [CL.location, p.location],
+            [CL.website,  p.website],
+            [CL.linkedin, p.linkedin],
+            [CL.github,   p.github],
           ].filter(([, v]) => v).map(([label, value]) => (
             <View style={s.sideRow} key={label}>
               <Text style={s.sideRowLabel}>{label?.toUpperCase()}</Text>
@@ -137,7 +141,7 @@ export function ModernPdf({ cv }: Props) {
 
           {cv.skills.length > 0 && (
             <>
-              <Text style={s.sideHeading}>COMPETÊNCIAS</Text>
+              <Text style={s.sideHeading}>{SEC.skills.toUpperCase()}</Text>
               {cv.skills.map((g) => (
                 <View key={g.id} style={{ marginBottom: 6 }}>
                   {g.category && <Text style={s.skillCat}>{g.category.toUpperCase()}</Text>}
@@ -153,7 +157,7 @@ export function ModernPdf({ cv }: Props) {
 
           {cv.languages.length > 0 && (
             <>
-              <Text style={s.sideHeading}>IDIOMAS</Text>
+              <Text style={s.sideHeading}>{SEC.languages.toUpperCase()}</Text>
               {cv.languages.map((l) => (
                 <View key={l.id} style={s.langRow}>
                   <Text>{l.name}</Text>
@@ -168,7 +172,7 @@ export function ModernPdf({ cv }: Props) {
         <View style={s.main}>
           {cv.summary && (
             <View style={s.block}>
-              <Text style={s.blockTitle}>SOBRE MIM</Text>
+              <Text style={s.blockTitle}>{SEC.about.toUpperCase()}</Text>
               <View style={s.blockRule} />
               <Text style={s.summary}>{cv.summary}</Text>
             </View>
@@ -176,7 +180,7 @@ export function ModernPdf({ cv }: Props) {
 
           {cv.experience.length > 0 && (
             <View style={s.block}>
-              <Text style={s.blockTitle}>EXPERIÊNCIA</Text>
+              <Text style={s.blockTitle}>{SEC.experience.toUpperCase()}</Text>
               <View style={s.blockRule} />
               {cv.experience.map((it) => (
                 <View key={it.id} style={s.item} wrap={false}>
@@ -204,7 +208,7 @@ export function ModernPdf({ cv }: Props) {
 
           {cv.projects.length > 0 && (
             <View style={s.block}>
-              <Text style={s.blockTitle}>PROJETOS</Text>
+              <Text style={s.blockTitle}>{SEC.projects.toUpperCase()}</Text>
               <View style={s.blockRule} />
               {cv.projects.map((proj) => (
                 <View key={proj.id} style={s.item} wrap={false}>
@@ -221,7 +225,7 @@ export function ModernPdf({ cv }: Props) {
 
           {cv.education.length > 0 && (
             <View style={s.block}>
-              <Text style={s.blockTitle}>FORMAÇÃO</Text>
+              <Text style={s.blockTitle}>{SEC.education.toUpperCase()}</Text>
               <View style={s.blockRule} />
               {cv.education.map((it) => (
                 <View key={it.id} style={s.item} wrap={false}>

@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import type { CVData } from '../types';
+import { labelsForLocale } from '../utils/cvLabels';
+import { useT } from '../i18n';
 
 interface Props { cv: CVData; }
 
@@ -41,6 +43,10 @@ function Bullets({ text }: { text: string }) {
 export function ModernTemplate({ cv }: Props) {
   const accent = cv.accentColor || '#6366f1';
   const { personal: p } = cv;
+  const { locale } = useT();
+  const L = labelsForLocale(cv.locale ?? locale);
+  const SEC = L.sections;
+  const CL  = L.contactLabels;
 
   const rootStyle: CSSProperties = {
     fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
@@ -81,17 +87,17 @@ export function ModernTemplate({ cv }: Props) {
             </p>
           </div>
 
-          <Section title="Contacto">
-            {p.email    && <Row label="Email"    value={p.email} />}
-            {p.phone    && <Row label="Telefone" value={p.phone} />}
-            {p.location && <Row label="Local"    value={p.location} />}
-            {p.website  && <Row label="Web"      value={p.website} />}
-            {p.linkedin && <Row label="LinkedIn" value={p.linkedin} />}
-            {p.github   && <Row label="GitHub"   value={p.github} />}
+          <Section title={SEC.contact}>
+            {p.email    && <Row label={CL.email}    value={p.email} />}
+            {p.phone    && <Row label={CL.phone}    value={p.phone} />}
+            {p.location && <Row label={CL.location} value={p.location} />}
+            {p.website  && <Row label={CL.website}  value={p.website} />}
+            {p.linkedin && <Row label={CL.linkedin} value={p.linkedin} />}
+            {p.github   && <Row label={CL.github}   value={p.github} />}
           </Section>
 
           {cv.skills.length > 0 && (
-            <Section title="Competências">
+            <Section title={SEC.skills}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {cv.skills.map((g) => (
                   <div key={g.id}>
@@ -117,7 +123,7 @@ export function ModernTemplate({ cv }: Props) {
           )}
 
           {cv.languages.length > 0 && (
-            <Section title="Idiomas">
+            <Section title={SEC.languages}>
               <ul style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {cv.languages.map((l) => (
                   <li key={l.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
@@ -133,13 +139,13 @@ export function ModernTemplate({ cv }: Props) {
         {/* Main */}
         <main style={{ padding: 36, display: 'flex', flexDirection: 'column', gap: 22 }}>
           {cv.summary && (
-            <Block title="Sobre mim" accent={accent}>
+            <Block title={SEC.about} accent={accent}>
               <p style={{ fontSize: 13, lineHeight: 1.55, color: C.inkSoft, whiteSpace: 'pre-wrap' }}>{cv.summary}</p>
             </Block>
           )}
 
           {cv.experience.length > 0 && (
-            <Block title="Experiência" accent={accent}>
+            <Block title={SEC.experience} accent={accent}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {cv.experience.map((it) => (
                   <div key={it.id}>
@@ -162,7 +168,7 @@ export function ModernTemplate({ cv }: Props) {
           )}
 
           {cv.projects.length > 0 && (
-            <Block title="Projetos" accent={accent}>
+            <Block title={SEC.projects} accent={accent}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {cv.projects.map((proj) => (
                   <div key={proj.id}>
@@ -181,7 +187,7 @@ export function ModernTemplate({ cv }: Props) {
           )}
 
           {cv.education.length > 0 && (
-            <Block title="Formação" accent={accent}>
+            <Block title={SEC.education} accent={accent}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {cv.education.map((it) => (
                   <div key={it.id}>

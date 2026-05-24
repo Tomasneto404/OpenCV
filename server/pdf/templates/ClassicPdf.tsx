@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import type { CVData } from '../../types';
 import { PALETTE, bullets, contactList } from '../common';
+import { labelsFor } from '../labels';
 
 interface Props { cv: CVData; }
 
@@ -47,6 +48,7 @@ export function ClassicPdf({ cv }: Props) {
   const s = makeStyles(accent);
   const p = cv.personal;
   const contacts = contactList(p);
+  const L = labelsFor(cv.locale).sections;
 
   return (
     <Document title={p.fullName || 'CV'} author={p.fullName} producer="CVeaver">
@@ -59,7 +61,7 @@ export function ClassicPdf({ cv }: Props) {
 
         {cv.summary && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Sumário</Text>
+            <Text style={s.sectionTitle}>{L.about}</Text>
             <View style={s.sectionRule} />
             <Text style={s.summary}>{cv.summary}</Text>
           </View>
@@ -67,7 +69,7 @@ export function ClassicPdf({ cv }: Props) {
 
         {cv.experience.length > 0 && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Experiência Profissional</Text>
+            <Text style={s.sectionTitle}>{L.experience}</Text>
             <View style={s.sectionRule} />
             {cv.experience.map((it) => (
               <View key={it.id} style={s.item} wrap={false}>
@@ -89,7 +91,7 @@ export function ClassicPdf({ cv }: Props) {
 
         {cv.education.length > 0 && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Formação</Text>
+            <Text style={s.sectionTitle}>{L.education}</Text>
             <View style={s.sectionRule} />
             {cv.education.map((it) => (
               <View key={it.id} style={s.item} wrap={false}>
@@ -106,7 +108,7 @@ export function ClassicPdf({ cv }: Props) {
 
         {cv.skills.length > 0 && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Competências</Text>
+            <Text style={s.sectionTitle}>{L.skills}</Text>
             <View style={s.sectionRule} />
             {cv.skills.map((g) => (
               <Text key={g.id} style={s.skillLine}>
@@ -119,7 +121,7 @@ export function ClassicPdf({ cv }: Props) {
 
         {cv.projects.length > 0 && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Projetos</Text>
+            <Text style={s.sectionTitle}>{L.projects}</Text>
             <View style={s.sectionRule} />
             {cv.projects.map((proj) => (
               <View key={proj.id} style={s.item} wrap={false}>
@@ -136,7 +138,7 @@ export function ClassicPdf({ cv }: Props) {
 
         {cv.languages.length > 0 && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Idiomas</Text>
+            <Text style={s.sectionTitle}>{L.languages}</Text>
             <View style={s.sectionRule} />
             <Text style={s.langLine}>
               {cv.languages.map((l, i) => (

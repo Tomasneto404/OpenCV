@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import type { CVData } from '../../types';
 import { PALETTE, bullets, contactList } from '../common';
+import { labelsFor } from '../labels';
 
 interface Props { cv: CVData; }
 
@@ -46,6 +47,7 @@ export function MinimalPdf({ cv }: Props) {
   const s = makeStyles(accent);
   const p = cv.personal;
   const contacts = contactList(p);
+  const L = labelsFor(cv.locale).sections;
 
   return (
     <Document title={p.fullName || 'CV'} author={p.fullName} producer="CVeaver">
@@ -61,14 +63,14 @@ export function MinimalPdf({ cv }: Props) {
 
         {cv.summary && (
           <View style={s.block}>
-            <Text style={s.blockTitle}>SOBRE</Text>
+            <Text style={s.blockTitle}>{L.about.toUpperCase()}</Text>
             <Text style={s.summary}>{cv.summary}</Text>
           </View>
         )}
 
         {cv.experience.length > 0 && (
           <View style={s.block}>
-            <Text style={s.blockTitle}>EXPERIÊNCIA</Text>
+            <Text style={s.blockTitle}>{L.experience.toUpperCase()}</Text>
             {cv.experience.map((it) => (
               <View key={it.id} style={s.row} wrap={false}>
                 <Text style={s.rowDate}>{it.startDate}{it.endDate ? ` — ${it.endDate}` : ''}</Text>
@@ -86,7 +88,7 @@ export function MinimalPdf({ cv }: Props) {
 
         {cv.projects.length > 0 && (
           <View style={s.block}>
-            <Text style={s.blockTitle}>PROJETOS</Text>
+            <Text style={s.blockTitle}>{L.projects.toUpperCase()}</Text>
             {cv.projects.map((proj) => (
               <View key={proj.id} style={s.row} wrap={false}>
                 <Text style={s.rowDate}>{proj.stack || ' '}</Text>
@@ -104,7 +106,7 @@ export function MinimalPdf({ cv }: Props) {
 
         {cv.education.length > 0 && (
           <View style={s.block}>
-            <Text style={s.blockTitle}>FORMAÇÃO</Text>
+            <Text style={s.blockTitle}>{L.education.toUpperCase()}</Text>
             {cv.education.map((it) => (
               <View key={it.id} style={s.row} wrap={false}>
                 <Text style={s.rowDate}>{it.startDate}{it.endDate ? ` — ${it.endDate}` : ''}</Text>

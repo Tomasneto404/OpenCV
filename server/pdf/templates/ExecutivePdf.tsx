@@ -8,6 +8,7 @@
  */
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import type { CVData } from '../../types';
+import { labelsFor } from '../labels';
 import { PALETTE, bullets, contactList } from '../common';
 
 interface Props { cv: CVData; }
@@ -60,6 +61,7 @@ export function ExecutivePdf({ cv }: Props) {
   const s = makeStyles(accent);
   const p = cv.personal;
   const contacts = contactList(p);
+  const L = labelsFor(cv.locale).sections;
 
   return (
     <Document title={p.fullName || 'CV'} author={p.fullName} producer="CVeaver">
@@ -74,7 +76,7 @@ export function ExecutivePdf({ cv }: Props) {
 
         {cv.summary && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Perfil</Text>
+            <Text style={s.sectionTitle}>{L.about}</Text>
             <View style={s.sectionRule} />
             <Text style={s.summary}>{cv.summary}</Text>
           </View>
@@ -82,7 +84,7 @@ export function ExecutivePdf({ cv }: Props) {
 
         {cv.experience.length > 0 && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Experiência</Text>
+            <Text style={s.sectionTitle}>{L.experience}</Text>
             <View style={s.sectionRule} />
             {cv.experience.map((it) => (
               <View key={it.id} style={s.item} wrap={false}>
@@ -104,7 +106,7 @@ export function ExecutivePdf({ cv }: Props) {
 
         {cv.education.length > 0 && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Formação</Text>
+            <Text style={s.sectionTitle}>{L.education}</Text>
             <View style={s.sectionRule} />
             {cv.education.map((it) => (
               <View key={it.id} style={s.item} wrap={false}>
@@ -121,7 +123,7 @@ export function ExecutivePdf({ cv }: Props) {
 
         {cv.projects.length > 0 && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Projetos relevantes</Text>
+            <Text style={s.sectionTitle}>{L.projects}</Text>
             <View style={s.sectionRule} />
             {cv.projects.map((proj) => (
               <View key={proj.id} style={s.item} wrap={false}>
@@ -138,7 +140,7 @@ export function ExecutivePdf({ cv }: Props) {
 
         {(cv.skills.length > 0 || cv.languages.length > 0) && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Competências e idiomas</Text>
+            <Text style={s.sectionTitle}>{L.skills} · {L.languages}</Text>
             <View style={s.sectionRule} />
             <View style={s.twoCol}>
               {cv.skills.length > 0 && (

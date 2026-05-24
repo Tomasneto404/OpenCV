@@ -40,13 +40,35 @@ export async function createCheckout(cvId: string, mode: 'new' | 'update', custo
 
 export interface VerifyResult {
   paid: boolean;
+  /** Stripe payment_status: 'paid' | 'unpaid' | 'no_payment_required'.
+   *  Undefined when the session couldn't be retrieved. For async methods
+   *  (Multibanco/MB WAY) the buyer returns with 'unpaid' until they pay. */
+  status?: string;
 }
 
 export async function verifySession(sessionId: string): Promise<VerifyResult> {
   const res = await fetch(`${API_URL}/verify-session/${sessionId}`);
   if (!res.ok) return { paid: false };
   const json = await res.json();
-  return { paid: Boolean(json.paid) };
+  return {
+    paid: Boolean(json.paid),
+    status: typeof json.status === 'string' ? json.status : undefined,
+  };
+}
+
+/**
+ * Trigger PDF delivery by email for a paid session. Called on the Paid screen
+ * so the buyer is emailed the moment payment confirms — not only on download.
+ * Idempotent server-side. Returns the email Stripe collected at checkout.
+ */
+export async function fulfillSession(sessionId: string): Promise<{ delivered: boolean; email: string | null }> {
+  const res = await fetch(`${API_URL}/fulfill/${sessionId}`);
+  if (!res.ok) return { delivered: false, email: null };
+  const json = await res.json();
+  return {
+    delivered: Boolean(json.delivered),
+    email: typeof json.email === 'string' ? json.email : null,
+  };
 }
 
 /**

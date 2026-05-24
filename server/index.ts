@@ -6,8 +6,12 @@
  *   GET  /cv/:id                   — read it back (after Stripe roundtrip)
  *   POST /create-checkout-session  — Stripe Checkout creation
  *   GET  /verify-session/:sessionId — Stripe status only
+ *   GET  /fulfill/:sessionId       — email the PDF on payment (idempotent)
  *   GET  /pdf/:sessionId?cv_id=X   — **PAYWALLED**. Renders, encrypts,
- *                                    signs internally, emails, returns PDF
+ *                                    signs internally, emails, returns PDF.
+ *                                    202 when payment is still pending (async).
+ *   POST /webhook/stripe           — Stripe events; fulfils async payments
+ *                                    (Multibanco/MB WAY) by emailing the PDF
  *   POST /decode-pdf               — decrypt payload for the update flow
  *   POST /support                  — file a complaint
  *   POST /verify-pdf               — bool-only verifier used by /support
@@ -55,10 +59,17 @@ const PRICE_NEW_CENTS    = 100;
 const PRICE_UPDATE_CENTS = 50;
 
 const ALLOWED_METHODS = new Set(['card', 'multibanco', 'mb_way']);
-const PAYMENT_METHODS = (process.env.STRIPE_PAYMENT_METHODS || 'card,multibanco')
-  .split(',')
-  .map((m) => m.trim())
-  .filter((m) => ALLOWED_METHODS.has(m));
+/* When STRIPE_PAYMENT_METHODS is set we pin Checkout to that list. When it's
+   unset we omit `payment_method_types` entirely so Stripe shows every method
+   enabled in the Dashboard (Dynamic Payment Methods) — card + wallets
+   (Apple/Google Pay ride on `card`) + Multibanco/MB WAY, adapted to the buyer.
+   Apple/Google Pay need no explicit type; they appear automatically on the
+   hosted Checkout over HTTPS. Async methods (Multibanco/MB WAY) are fulfilled
+   by the /webhook/stripe handler, not the synchronous return. */
+const PAYMENT_METHODS_ENV = process.env.STRIPE_PAYMENT_METHODS;
+const PAYMENT_METHODS = PAYMENT_METHODS_ENV
+  ? PAYMENT_METHODS_ENV.split(',').map((m) => m.trim()).filter((m) => ALLOWED_METHODS.has(m))
+  : null;
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
@@ -77,6 +88,10 @@ interface StoreEntry {
   savedAt: number;
   prevPayloadB64?: string;
   customerEmail?: string;
+  /** Set once the paid PDF has been emailed for this CV. Guards against
+     double-delivery when both the webhook and the synchronous /pdf path
+     fire for the same (card) session. */
+  delivered?: boolean;
 }
 
 type Store = Record<string, StoreEntry>;
@@ -145,6 +160,48 @@ app.use(helmet({
 }));
 
 app.use(cors({ origin: clientUrl }));
+
+/* ── Stripe webhook ────────────────────────────────────────
+   MUST be registered before express.json(): signature verification needs
+   the raw request body, untouched by the JSON parser. This is the source of
+   truth for fulfilment — it covers both synchronous methods (card/wallets,
+   `checkout.session.completed`) and asynchronous ones (Multibanco/MB WAY,
+   `checkout.session.async_payment_succeeded`, confirmed hours later). */
+app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
+  const sig    = req.headers['stripe-signature'];
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret || typeof sig !== 'string') {
+    return res.status(400).send('Webhook not configured');
+  }
+
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, secret);
+  } catch (err) {
+    console.error('[webhook] bad signature:', (err as Error).message);
+    return res.status(400).send('Invalid signature');
+  }
+
+  try {
+    if (event.type === 'checkout.session.completed'
+      || event.type === 'checkout.session.async_payment_succeeded') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (session.payment_status === 'paid') {
+        await deliverForSession(session);
+      }
+    } else if (event.type === 'checkout.session.async_payment_failed') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      console.log(`[webhook] async payment failed for session ${session.id}`);
+    }
+  } catch (err) {
+    // Return 500 so Stripe retries transient failures (e.g. a render hiccup).
+    console.error('[webhook] handler error:', (err as Error).message);
+    return res.status(500).send('handler error');
+  }
+
+  res.json({ received: true });
+});
+
 app.use(express.json({ limit: '60mb' })); // photo + up to ~50 MB of certs
 
 /* PDF renders are heavy. Cap concurrency. */
@@ -215,7 +272,6 @@ function buildCheckout({ cvId, mode, customerEmail }: { cvId: string; mode?: 'ne
     : 'Gera um CV profissional — descarrega o PDF e recebe por email.';
 
   const params: Stripe.Checkout.SessionCreateParams = {
-    payment_method_types: PAYMENT_METHODS as Stripe.Checkout.SessionCreateParams.PaymentMethodType[],
     line_items: [{
       price_data: {
         currency: 'eur',
@@ -225,11 +281,94 @@ function buildCheckout({ cvId, mode, customerEmail }: { cvId: string; mode?: 'ne
       quantity: 1,
     }],
     mode: 'payment',
+    // The webhook reads cvId/mode from metadata to fulfil the order — the
+    // success_url query string is not available server-side on async methods.
+    metadata: { cvId, mode: isUpdate ? 'update' : 'new' },
     success_url: `${clientUrl}?success=true&session_id={CHECKOUT_SESSION_ID}&cv_id=${cvId}&kind=${isUpdate ? 'update' : 'new'}`,
     cancel_url:  `${clientUrl}?canceled=true`,
   };
+  // Pin methods only when explicitly configured; otherwise omit so Stripe
+  // uses Dynamic Payment Methods from the Dashboard (see PAYMENT_METHODS).
+  if (PAYMENT_METHODS && PAYMENT_METHODS.length > 0) {
+    params.payment_method_types = PAYMENT_METHODS as Stripe.Checkout.SessionCreateParams.PaymentMethodType[];
+  }
   if (customerEmail) params.customer_email = customerEmail;
   return params;
+}
+
+/* ── Fulfilment helpers (shared by /pdf and the webhook) ──── */
+
+/** Render the paid PDF for a stored CV. Pure: no email, no store mutation.
+    Returns null when the CV is no longer in the store (expired draft). */
+async function buildPaidPdf(
+  cvId: string,
+  customerEmail: string | null,
+): Promise<{ pdf: Buffer; meta: CVMeta; filename: string } | null> {
+  const stored = store[cvId];
+  if (!stored) return null;
+  const cv = stored.cv;
+  const now = new Date().toISOString();
+
+  let prevMeta: CVMeta | null = null;
+  if (stored.prevPayloadB64) {
+    try {
+      const { decryptPayload } = await import('./crypto.js');
+      const prev = decryptPayload(Buffer.from(stored.prevPayloadB64, 'base64')) as EmbedPayloadV2;
+      if (prev?.meta) prevMeta = prev.meta;
+    } catch {
+      // Tampered or wrong-key → ignore, start fresh.
+    }
+  }
+
+  const meta: CVMeta = {
+    createdAt: prevMeta?.createdAt ?? now,
+    lastEditAt: now,
+    editCount: (prevMeta?.editCount ?? 0) + 1,
+    lastSentEmail: customerEmail,
+  };
+
+  const signature = signCV(cv);
+  const publicKey = getPublicKey();
+  const pdf = await renderLimit(() => renderPdf(cv, { signature, publicKey, meta }));
+  const filename = safeFilename(`${cv.personal.fullName || 'cv'}.pdf`);
+  return { pdf, meta, filename };
+}
+
+/** Idempotently render + email the paid PDF for a Checkout session. Used by
+    the webhook (async methods) and as the email side-effect of /pdf. */
+async function deliverForSession(session: Stripe.Checkout.Session): Promise<void> {
+  const cvId = session.metadata?.cvId;
+  if (!cvId || !ID_RE.test(cvId)) {
+    console.warn('[deliver] session without valid cvId metadata');
+    return;
+  }
+  const stored = store[cvId];
+  if (!stored) {
+    console.warn(`[deliver] cv ${cvId.slice(0, 8)}… not in store (expired draft?)`);
+    return;
+  }
+  if (stored.delivered) return; // already emailed — idempotent
+
+  const customerEmail = session.customer_details?.email || stored.customerEmail || null;
+  if (!customerEmail) {
+    console.warn(`[deliver] no email on session for cv ${cvId.slice(0, 8)}… — cannot deliver`);
+    return;
+  }
+
+  const built = await buildPaidPdf(cvId, customerEmail);
+  if (!built) return;
+
+  const ok = await sendCvByEmail({
+    to: customerEmail,
+    pdf: built.pdf,
+    filename: built.filename,
+    fullName: stored.cv.personal.fullName,
+  });
+  if (ok) {
+    stored.delivered = true;
+    saveStore(store);
+  }
+  console.log(`[deliver] email ${ok ? 'sent' : 'failed'} → ${redactEmail(customerEmail)} (cv ${cvId.slice(0, 8)}…)`);
 }
 
 app.post('/create-checkout-session', checkoutLimiter, async (req: Request, res: Response) => {
@@ -272,6 +411,37 @@ app.get('/verify-session/:sessionId', standardLimiter, async (req: Request, res:
   }
 });
 
+/* ── /fulfill/:sessionId — email the PDF on payment ──────
+   Called by the client the moment it returns to the Paid screen, so the buyer
+   gets the email as soon as payment confirms — not only when they click
+   download. Idempotent (deliverForSession guards on `delivered`) and shares
+   that guard with the webhook and /pdf, so the email goes out exactly once.
+   Uses the email collected by Stripe Checkout (session.customer_details). */
+app.get('/fulfill/:sessionId', standardLimiter, async (req: Request, res: Response) => {
+  const sid = req.params.sessionId;
+  if (typeof sid !== 'string' || !STRIPE_SESSION_RE.test(sid)) {
+    return res.status(400).json({ delivered: false });
+  }
+  let session: Stripe.Checkout.Session;
+  try {
+    session = await stripe.checkout.sessions.retrieve(sid);
+  } catch {
+    return res.status(400).json({ delivered: false });
+  }
+  if (session.payment_status !== 'paid') {
+    return res.status(202).json({ delivered: false, pending: true });
+  }
+  try {
+    await deliverForSession(session);
+  } catch (err) {
+    console.error('[fulfill]', (err as Error).message);
+    return res.status(500).json({ delivered: false, error: safeErrorMessage(err) });
+  }
+  const cvId = session.metadata?.cvId;
+  const delivered = cvId && ID_RE.test(cvId) ? Boolean(store[cvId]?.delivered) : false;
+  res.json({ delivered, email: session.customer_details?.email ?? null });
+});
+
 /* ── /pdf/:sessionId — the paywall + email delivery ────── */
 
 app.get('/pdf/:sessionId', pdfLimiter, async (req: Request, res: Response) => {
@@ -292,47 +462,32 @@ app.get('/pdf/:sessionId', pdfLimiter, async (req: Request, res: Response) => {
     } catch {
       return res.status(402).json({ error: 'Payment required' });
     }
+    // Async methods (Multibanco/MB WAY) return here still unpaid — the
+    // customer pays later at an ATM/homebanking. The webhook delivers the PDF
+    // by email once payment confirms; tell the client to show "pending".
     if (session.payment_status !== 'paid') {
-      return res.status(402).json({ error: 'Payment required', status: session.payment_status });
+      return res.status(202).json({ pending: true, status: session.payment_status || 'pending' });
     }
 
     const stored = store[cvId];
     if (!stored) return res.status(404).json({ error: 'CV not found' });
-    const cv = stored.cv;
 
-    const now = new Date().toISOString();
     const customerEmail = session.customer_details?.email || stored.customerEmail || null;
 
-    let prevMeta: CVMeta | null = null;
-    if (stored.prevPayloadB64) {
-      try {
-        const { decryptPayload } = await import('./crypto.js');
-        const prev = decryptPayload(Buffer.from(stored.prevPayloadB64, 'base64')) as EmbedPayloadV2;
-        if (prev?.meta) prevMeta = prev.meta;
-      } catch {
-        // Tampered or wrong-key → ignore, start fresh.
-      }
-    }
+    const built = await buildPaidPdf(cvId, customerEmail);
+    if (!built) return res.status(404).json({ error: 'CV not found' });
+    const { pdf, meta, filename } = built;
 
-    const meta: CVMeta = {
-      createdAt: prevMeta?.createdAt ?? now,
-      lastEditAt: now,
-      editCount: (prevMeta?.editCount ?? 0) + 1,
-      lastSentEmail: customerEmail,
-    };
-
-    const signature = signCV(cv);
-    const publicKey = getPublicKey();
-    const pdf = await renderLimit(() => renderPdf(cv, { signature, publicKey, meta }));
-
-    const filename = safeFilename(`${cv.personal.fullName || 'cv'}.pdf`);
-
-    if (customerEmail) {
+    // Email once, even if the webhook also fires for this (card) session. Mark
+    // delivered optimistically to shrink the double-send race window.
+    if (customerEmail && !stored.delivered) {
+      stored.delivered = true;
+      saveStore(store);
       void sendCvByEmail({
         to: customerEmail,
         pdf,
         filename,
-        fullName: cv.personal.fullName,
+        fullName: stored.cv.personal.fullName,
       }).then((ok) => {
         console.log(`[mail] ${ok ? 'sent' : 'skipped/failed'} → ${redactEmail(customerEmail)}`);
       });
@@ -572,6 +727,6 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`CVeaver server :${PORT}`);
   console.log(`store: ${DATA_FILE}`);
-  console.log(`payment methods: ${PAYMENT_METHODS.join(', ') || '(none configured)'}`);
+  console.log(`payment methods: ${PAYMENT_METHODS ? PAYMENT_METHODS.join(', ') : 'dynamic (Stripe Dashboard)'}`);
   console.log(`env: ${IS_PROD ? 'production' : 'development'}`);
 });

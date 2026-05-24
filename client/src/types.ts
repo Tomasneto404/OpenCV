@@ -99,6 +99,10 @@ export interface CVData {
   projects: ProjectItem[];
   /** Optional in v1 — older configs won't have it. */
   certificates?: CertificateItem[];
+  /** Locale the CV's labels (SOBRE MIM / EXPERIENCE / ...) are rendered
+   *  in by the PDF templates. Defaults to 'pt' server-side if missing.
+   *  Set by the client at save time from the current UI locale. */
+  locale?: 'pt' | 'en' | 'es' | 'fr' | 'de';
 }
 
 /**

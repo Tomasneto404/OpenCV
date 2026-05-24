@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer';
 import type { CVData } from '../../types';
 import { PALETTE, bullets, withAlpha } from '../common';
+import { labelsFor } from '../labels';
 
 interface Props { cv: CVData; }
 
@@ -97,6 +98,7 @@ export function CreativePdf({ cv }: Props) {
   const s = makeStyles(accent);
   const p = cv.personal;
   const contacts = [p.email, p.phone, p.location, p.website, p.linkedin, p.github].filter(Boolean);
+  const L = labelsFor(cv.locale).sections;
 
   return (
     <Document title={p.fullName || 'CV'} author={p.fullName} producer="CVeaver">
@@ -131,7 +133,7 @@ export function CreativePdf({ cv }: Props) {
 
             {cv.experience.length > 0 && (
               <View style={s.block}>
-                <Text style={s.blockTitle}>EXPERIÊNCIA</Text>
+                <Text style={s.blockTitle}>{L.experience.toUpperCase()}</Text>
                 {cv.experience.map((it) => (
                   <View key={it.id} style={s.expItem} wrap={false}>
                     <View style={s.expHeader}>
@@ -154,7 +156,7 @@ export function CreativePdf({ cv }: Props) {
 
             {cv.projects.length > 0 && (
               <View style={s.block}>
-                <Text style={s.blockTitle}>PROJETOS</Text>
+                <Text style={s.blockTitle}>{L.projects.toUpperCase()}</Text>
                 {cv.projects.map((proj) => (
                   <View key={proj.id} style={s.projectCard} wrap={false}>
                     <View style={s.projHeader}>
@@ -173,7 +175,7 @@ export function CreativePdf({ cv }: Props) {
           <View style={s.aside}>
             {cv.skills.length > 0 && (
               <View style={s.block}>
-                <Text style={s.blockTitle}>COMPETÊNCIAS</Text>
+                <Text style={s.blockTitle}>{L.skills.toUpperCase()}</Text>
                 {cv.skills.map((g) => (
                   <View key={g.id} style={{ marginBottom: 8 }}>
                     {g.category && <Text style={s.skillCat}>{g.category.toUpperCase()}</Text>}
@@ -189,7 +191,7 @@ export function CreativePdf({ cv }: Props) {
 
             {cv.education.length > 0 && (
               <View style={s.block}>
-                <Text style={s.blockTitle}>FORMAÇÃO</Text>
+                <Text style={s.blockTitle}>{L.education.toUpperCase()}</Text>
                 {cv.education.map((it) => (
                   <View key={it.id} style={s.eduItem} wrap={false}>
                     <Text style={s.eduDeg}>{it.degree}</Text>
@@ -202,7 +204,7 @@ export function CreativePdf({ cv }: Props) {
 
             {cv.languages.length > 0 && (
               <View style={s.block}>
-                <Text style={s.blockTitle}>IDIOMAS</Text>
+                <Text style={s.blockTitle}>{L.languages.toUpperCase()}</Text>
                 {cv.languages.map((l) => (
                   <View key={l.id} style={s.langRow}>
                     <Text>{l.name}</Text>

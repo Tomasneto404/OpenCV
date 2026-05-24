@@ -129,6 +129,18 @@ export const dict: Dict = {
     editAgain: 'Volver a editar (sin pagar de nuevo en esta sesión)',
     startOther: 'Empezar otro CV',
   },
+  pending: {
+    badge: 'Pago pendiente',
+    title: 'Esperando la confirmación.',
+    subtitle: 'Elegiste un método que se confirma más tarde (p. ej. Multibanco / MB WAY). En cuanto se confirme el pago, te enviamos tu CV en PDF al email del pago.',
+    note: 'Puedes cerrar esta página — no hace falta esperar aquí. La entrega es automática por email.',
+    done: 'Volver al inicio',
+  },
+  beta: {
+    badge: 'Beta',
+    badgeTitle: 'Los pagos están en pruebas — todavía no hay cargos reales.',
+    banner: 'Beta — los pagos están en modo de prueba. Puedes probar todo el flujo, pero todavía no hay cargos reales.',
+  },
   support: {
     navBack: '← Volver',
     title: 'Soporte CVeaver',
@@ -223,4 +235,24 @@ export const dict: Dict = {
     ],
   },
   language: { label: 'Idioma' },
+
+  cv: {
+    sections: {
+      about:      'Sobre mí',
+      experience: 'Experiencia',
+      education:  'Formación',
+      skills:     'Habilidades',
+      languages:  'Idiomas',
+      projects:   'Proyectos',
+      contact:    'Contacto',
+    },
+    contactLabels: {
+      email:    'Email',
+      phone:    'Teléfono',
+      location: 'Ubicación',
+      website:  'Web',
+      linkedin: 'LinkedIn',
+      github:   'GitHub',
+    },
+  },
 };

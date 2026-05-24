@@ -11,6 +11,8 @@
  */
 import type { ReactNode } from 'react';
 import type { CVData } from '../types';
+import { labelsForLocale } from '../utils/cvLabels';
+import { useT } from '../i18n';
 
 interface Props { cv: CVData; }
 
@@ -38,6 +40,8 @@ function Bullets({ text }: { text: string }) {
 export function ExecutiveTemplate({ cv }: Props) {
   const accent = cv.accentColor || '#0b1220';
   const { personal: p } = cv;
+  const { locale } = useT();
+  const SEC = labelsForLocale(cv.locale ?? locale).sections;
 
   return (
     <div className="cv-surface" style={{
@@ -73,13 +77,13 @@ export function ExecutiveTemplate({ cv }: Props) {
       </header>
 
       {cv.summary && (
-        <Section title="Perfil" accent={accent}>
+        <Section title={SEC.about} accent={accent}>
           <p style={{ fontSize: 13, lineHeight: 1.65, color: C.inkSoft, whiteSpace: 'pre-wrap' }}>{cv.summary}</p>
         </Section>
       )}
 
       {cv.experience.length > 0 && (
-        <Section title="Experiência" accent={accent}>
+        <Section title={SEC.experience} accent={accent}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {cv.experience.map((it) => (
               <div key={it.id}>
@@ -100,7 +104,7 @@ export function ExecutiveTemplate({ cv }: Props) {
       )}
 
       {cv.education.length > 0 && (
-        <Section title="Formação" accent={accent}>
+        <Section title={SEC.education} accent={accent}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {cv.education.map((it) => (
               <div key={it.id}>
@@ -121,7 +125,7 @@ export function ExecutiveTemplate({ cv }: Props) {
       )}
 
       {cv.projects.length > 0 && (
-        <Section title="Projetos relevantes" accent={accent}>
+        <Section title={SEC.projects} accent={accent}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {cv.projects.map((proj) => (
               <div key={proj.id}>
@@ -138,7 +142,7 @@ export function ExecutiveTemplate({ cv }: Props) {
       )}
 
       {(cv.skills.length > 0 || cv.languages.length > 0) && (
-        <Section title="Competências e idiomas" accent={accent}>
+        <Section title={`${SEC.skills} · ${SEC.languages}`} accent={accent}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
             {cv.skills.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

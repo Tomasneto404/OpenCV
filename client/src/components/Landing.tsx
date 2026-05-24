@@ -21,6 +21,7 @@ import { loadConfigFromFile, ConfigLoadError } from '../utils/loadConfig';
 import { useToast } from './Toast';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { BrandMark } from './BrandMark';
+import { BetaBadge } from './BetaBadge';
 import { ThemeToggle } from './ThemeToggle';
 import { FaqItem } from './FaqItem';
 import { useT } from '../i18n';
@@ -72,7 +73,10 @@ export function Landing({ onNew, onLoadConfig, onSample, onNavigate }: Props) {
       {/* ── Sticky nav ─────────────────────────────────────────────── */}
       <nav className="nav-glass sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between gap-3">
-          <BrandMark withWordmark size={36} />
+          <div className="flex items-center gap-2 min-w-0">
+            <BrandMark withWordmark size={36} />
+            <BetaBadge />
+          </div>
           <div className="flex items-center gap-1 sm:gap-3">
             <a href="#how" className="hidden sm:inline-flex h-9 items-center px-3 text-sm text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] transition">
               {t('landing.nav.howItWorks')}

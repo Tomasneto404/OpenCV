@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import type { CVData } from '../types';
+import { labelsForLocale } from '../utils/cvLabels';
+import { useT } from '../i18n';
 
 interface Props { cv: CVData; }
 
@@ -41,6 +43,8 @@ function Bullets({ text, accent }: { text: string; accent: string }) {
 export function CreativeTemplate({ cv }: Props) {
   const accent = cv.accentColor || '#a855f7';
   const { personal: p } = cv;
+  const { locale } = useT();
+  const SEC = labelsForLocale(cv.locale ?? locale).sections;
   const initials = p.fullName.split(/\s+/).filter(Boolean).slice(0, 2)
     .map((w) => w[0]?.toUpperCase()).join('') || '·';
 
@@ -110,7 +114,7 @@ export function CreativeTemplate({ cv }: Props) {
           )}
 
           {cv.experience.length > 0 && (
-            <Block title="Experiência" accent={accent}>
+            <Block title={SEC.experience} accent={accent}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {cv.experience.map((it) => (
                   <div key={it.id} style={{
@@ -135,7 +139,7 @@ export function CreativeTemplate({ cv }: Props) {
           )}
 
           {cv.projects.length > 0 && (
-            <Block title="Projetos" accent={accent}>
+            <Block title={SEC.projects} accent={accent}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {cv.projects.map((proj) => (
                   <div key={proj.id} style={{
@@ -159,7 +163,7 @@ export function CreativeTemplate({ cv }: Props) {
         {/* Aside */}
         <aside style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
           {cv.skills.length > 0 && (
-            <Block title="Competências" accent={accent}>
+            <Block title={SEC.skills} accent={accent}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {cv.skills.map((g) => (
                   <div key={g.id}>
@@ -184,7 +188,7 @@ export function CreativeTemplate({ cv }: Props) {
           )}
 
           {cv.education.length > 0 && (
-            <Block title="Formação" accent={accent}>
+            <Block title={SEC.education} accent={accent}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {cv.education.map((it) => (
                   <div key={it.id}>
@@ -200,7 +204,7 @@ export function CreativeTemplate({ cv }: Props) {
           )}
 
           {cv.languages.length > 0 && (
-            <Block title="Idiomas" accent={accent}>
+            <Block title={SEC.languages} accent={accent}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {cv.languages.map((l) => (
                   <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: C.inkSoft }}>

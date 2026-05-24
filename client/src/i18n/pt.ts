@@ -206,6 +206,18 @@ export const dict = {
     editAgain: 'Voltar a editar (sem pagar de novo nesta sessão)',
     startOther: 'Começar outro CV',
   },
+  pending: {
+    badge: 'Pagamento pendente',
+    title: 'Estamos à espera da confirmação.',
+    subtitle: 'Escolheste um método que confirma mais tarde (ex.: Multibanco / MB WAY). Assim que o pagamento for confirmado, enviamos o teu CV em PDF para o email do pagamento.',
+    note: 'Podes fechar esta página — não precisas de esperar aqui. A entrega é automática por email.',
+    done: 'Voltar ao início',
+  },
+  beta: {
+    badge: 'Beta',
+    badgeTitle: 'Pagamentos em fase de testes — ainda não há cobranças reais.',
+    banner: 'Beta — os pagamentos estão em modo de teste. Podes experimentar todo o fluxo, mas ainda não há cobranças reais.',
+  },
 
   support: {
     navBack: '← Voltar',
@@ -332,5 +344,25 @@ export const dict = {
 
   language: {
     label: 'Idioma',
+  },
+
+  cv: {
+    sections: {
+      about:      'Sobre mim',
+      experience: 'Experiência',
+      education:  'Formação',
+      skills:     'Competências',
+      languages:  'Idiomas',
+      projects:   'Projetos',
+      contact:    'Contacto',
+    },
+    contactLabels: {
+      email:    'Email',
+      phone:    'Telefone',
+      location: 'Local',
+      website:  'Web',
+      linkedin: 'LinkedIn',
+      github:   'GitHub',
+    },
   },
 } as const;

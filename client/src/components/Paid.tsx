@@ -10,10 +10,11 @@
  *   - Show the rank badge (driven by editCount from the server response).
  *   - Allow editing again without re-paying within the same session.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CVData, CVMeta } from '../types';
 import { Preview } from './Preview';
 import { downloadPaidPdf } from '../utils/pdf';
+import { fulfillSession } from '../api';
 import { slugify } from '../utils/download';
 import { useToast } from './Toast';
 import { useT } from '../i18n';
@@ -36,10 +37,31 @@ export function Paid({ cv, sessionId, cvId, initialMeta, onMetaUpdate, onReset, 
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfDone, setPdfDone] = useState(false);
   const [meta,    setMeta]    = useState<CVMeta | undefined>(initialMeta);
+  /** Email the server confirmed it sent the PDF to (from the payment). */
+  const [sentEmail, setSentEmail] = useState<string | null>(null);
   const toast = useToast();
   const { t } = useT();
 
   const baseName = slugify(cv.personal.fullName) || 'cv';
+
+  /* Email the PDF the moment we land here (payment confirmed), using the
+     address Stripe collected at checkout — no need to wait for a download
+     click. Idempotent server-side, so this never double-sends. Skipped for
+     the legacy 'TEST' bypass session. */
+  useEffect(() => {
+    if (!sessionId || sessionId === 'TEST') return;
+    let cancelled = false;
+    void (async () => {
+      const { delivered, email } = await fulfillSession(sessionId);
+      if (cancelled || !email) return;
+      setSentEmail(email);
+      if (delivered) {
+        toast.push({ kind: 'success', title: t('toast.pdfDoneTitle'), body: t('toast.emailSent', { email }) });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
 
   const handlePdf = async () => {
     if (!sessionId || !cvId) {
@@ -92,9 +114,9 @@ export function Paid({ cv, sessionId, cvId, initialMeta, onMetaUpdate, onReset, 
             <button onClick={handlePdf} disabled={pdfBusy} className="btn-primary w-full justify-center text-base py-3">
               {pdfBusy ? t('paid.downloadPdfBusy') : pdfDone ? t('paid.downloadPdfDone') : t('paid.downloadPdf')}
             </button>
-            {meta?.lastSentEmail && pdfDone && (
+            {(sentEmail || (meta?.lastSentEmail && pdfDone)) && (
               <p className="text-[12.5px] text-[color:var(--color-ink-muted)] text-center">
-                {t('paid.emailSent', { email: meta.lastSentEmail })}
+                {t('paid.emailSent', { email: (sentEmail || meta?.lastSentEmail) as string })}
               </p>
             )}
           </div>

@@ -37,3 +37,36 @@ Em produção, com Stripe live key configurada:
 - "Pagar" redirecciona para Stripe Checkout
 - `GET /pdf/cs_test_xxx?cv_id=...` sem pagamento → 402
 - `POST /dev/pdf` → 404 (rota não registada)
+
+## 2. Stripe go-live — Sessão 10 (todos os métodos)
+
+Implementado em modo **teste** (Sessão 10): Dynamic Payment Methods + webhook
+de fulfillment (`/webhook/stripe`) para pagamentos assíncronos
+(Multibanco / MB WAY). Falta só virar para live:
+
+### Config `server/.env` (live)
+
+- `STRIPE_SECRET_KEY=sk_live_…`
+- `STRIPE_WEBHOOK_SECRET=whsec_…` (do endpoint live, **não** do `stripe listen`)
+- `CLIENT_URL=https://cveaver.com`
+- `NODE_ENV=production` (desliga `/dev/pdf` e `/dev/test-email`)
+- `STRIPE_PAYMENT_METHODS` — deixar **unset** para Dynamic Payment Methods
+  (Stripe mostra o que estiver ativo no Dashboard). Só definir para fixar.
+- Rodar a **Resend API key** colada no chat de teste (`re_JR7XgKKV…`) por uma key live.
+
+### Dashboard Stripe (live mode)
+
+- Ativar **Multibanco** (e **MB WAY** se disponível na conta) em
+  Settings → Payment methods.
+- Criar webhook → `https://cveaver.com/webhook/stripe`, eventos:
+  `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+  `checkout.session.async_payment_failed`. Copiar o `whsec_…`.
+- Apple Pay: nada a fazer no Checkout hospedado (Stripe trata do domínio).
+
+### Verificação
+
+- Cartão → download imediato + email
+- Multibanco → ecrã "Pagamento pendente"; PDF chega por email após confirmação
+  (testar em test mode com `stripe trigger checkout.session.async_payment_succeeded`)
+- `POST /webhook/stripe` com assinatura inválida → 400
+- Sem duplicação de email quando webhook + /pdf disparam para a mesma sessão

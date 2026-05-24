@@ -170,7 +170,9 @@ services:
   # (traefik, dockerproxy) is left pinned. For private images, run
   # `docker login ghcr.io` on the host first so the mounted config has creds.
   watchtower:
-    image: containrrr/watchtower
+    # nickfedor/watchtower is the actively-maintained fork; the original
+    # containrrr/watchtower image is effectively unmaintained and broke.
+    image: nickfedor/watchtower
     container_name: watchtower
     restart: unless-stopped
     volumes:

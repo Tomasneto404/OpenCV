@@ -102,3 +102,42 @@ worth including.
 - [ ] Multibanco → "pending" screen; PDF arrives by email after confirmation
 - [ ] `POST /dev/pdf` → 404 (disabled by `NODE_ENV=production`)
 - [ ] No duplicate emails (webhook + /fulfill share the `delivered` guard)
+
+## 8. CI/CD
+
+**CI** (`.github/workflows/ci.yml`, on push + PR): client typecheck+build,
+server tests (Vitest), `docker compose config`, and a gitleaks secret scan.
+
+**Release** (`.github/workflows/release.yml`, on push to `main`): builds and
+pushes `ghcr.io/tomasneto404/cveaver-{server,client}:latest` (+ `:<sha>`) to
+GitHub Container Registry. No building on the VPS.
+
+**Auto-deploy** (Watchtower, in the compose): polls GHCR every 5 min and
+updates the `server` + `client` containers when a new `:latest` is pushed.
+Infra (traefik, dockerproxy) stays pinned.
+
+### One-time setup
+
+1. **GitHub repo variable** — Settings → Secrets and variables → Actions →
+   *Variables*: add `VITE_STRIPE_PUBLISHABLE_KEY` (the `pk_test_…`, later
+   `pk_live_…`). It's baked into the client image at build time.
+2. **GHCR images are private** (private repo). On the VPS, log in so both the
+   manual pull and Watchtower can read them:
+   ```sh
+   # PAT with read:packages scope
+   echo "$GHCR_PAT" | docker login ghcr.io -u tomasneto404 --password-stdin
+   ```
+   Watchtower mounts `/root/.docker/config.json` for these credentials
+   (override the path with `DOCKER_CONFIG_PATH` in `.env` if not root).
+
+### Deploy on the VPS
+
+```sh
+git pull                       # picks up compose / config changes
+docker compose pull            # fetch the latest images from GHCR
+docker compose up -d           # recreate changed containers (no --build)
+```
+
+After this, pushes to `main` redeploy automatically via Watchtower — no manual
+step needed. (Before the first CI run, the GHCR images don't exist yet; until
+then you can still `docker compose up -d --build` to build locally.)

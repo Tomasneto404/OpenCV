@@ -85,7 +85,7 @@ services:
   server:
     build:
       context: ./server
-    image: cveaver/server:latest
+    image: ghcr.io/tomasneto404/cveaver-server:latest
     container_name: cveaver-server
     restart: unless-stopped
     environment:
@@ -118,6 +118,8 @@ services:
       - traefik
     labels:
       - traefik.enable=true
+      # Watchtower auto-updates this container when a new image is pushed.
+      - com.centurylinklabs.watchtower.enable=true
       - traefik.http.routers.api.rule=Host(`api.${DOMAIN}`)
       - traefik.http.routers.api.entrypoints=websecure
       - traefik.http.routers.api.tls.certresolver=le
@@ -136,7 +138,7 @@ services:
       args:
         VITE_API_URL: https://api.${DOMAIN:-cveaver.com}
         VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
-    image: cveaver/client:latest
+    image: ghcr.io/tomasneto404/cveaver-client:latest
     container_name: cveaver-client
     restart: unless-stopped
     depends_on:
@@ -146,6 +148,8 @@ services:
       - traefik
     labels:
       - traefik.enable=true
+      # Watchtower auto-updates this container when a new image is pushed.
+      - com.centurylinklabs.watchtower.enable=true
       # Root domain
       - traefik.http.routers.web.rule=Host(`${DOMAIN}`)
       - traefik.http.routers.web.entrypoints=websecure
@@ -160,6 +164,19 @@ services:
       - traefik.http.middlewares.www-redirect.redirectregex.regex=^https://www\.(.*)
       - traefik.http.middlewares.www-redirect.redirectregex.replacement=https://$$1
       - traefik.http.middlewares.www-redirect.redirectregex.permanent=true
+
+  # Auto-deploy: polls GHCR and updates only the labelled app containers
+  # (server + client) when a new :latest image is pushed by CI. Infra
+  # (traefik, dockerproxy) is left pinned. For private images, run
+  # `docker login ghcr.io` on the host first so the mounted config has creds.
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DOCKER_CONFIG_PATH:-/root/.docker/config.json}:/config.json:ro
+    command: --interval ${WATCHTOWER_INTERVAL:-300} --cleanup --label-enable
 
 volumes:
   traefik-acme:

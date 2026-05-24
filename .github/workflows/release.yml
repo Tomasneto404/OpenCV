@@ -22,6 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -34,14 +35,13 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER }}/cveaver-server:latest
             ${{ env.REGISTRY }}/${{ env.OWNER }}/cveaver-server:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   client:
     name: Build & push client
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -60,5 +60,3 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER }}/cveaver-client:latest
             ${{ env.REGISTRY }}/${{ env.OWNER }}/cveaver-client:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max

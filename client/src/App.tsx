@@ -60,7 +60,7 @@ export const BYPASS_PAYMENT_FOR_TESTING = false;
 //      VITE_STRIPE_PUBLISHABLE_KEY=pk_live_… if/when used client-side).
 //   2. Set this flag to `false`.
 // =====================================================================
-export const BETA_PAYMENTS = true;
+export const BETA_PAYMENTS = false;
 
 type Screen = 'landing' | 'builder' | 'paid' | 'pending' | 'support' | 'faq' | 'terms';
 

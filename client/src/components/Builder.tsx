@@ -24,17 +24,15 @@ import { ProjectsSection } from './Form/ProjectsSection';
 import { CertificatesSection } from './Form/CertificatesSection';
 import { TemplatePicker } from './TemplatePicker';
 import { Preview } from './Preview';
-import { downloadDevPdf } from '../utils/pdf';
-import { slugify } from '../utils/download';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { sectionStatus, isCvEmpty, type SectionKey } from '../utils/completion';
-import { useToast } from './Toast';
 import { useT } from '../i18n';
 import { PRICES, formatPrice } from '../utils/format';
 import { BrandMark } from './BrandMark';
 import { Badge } from './Badge';
 import { BetaBadge } from './BetaBadge';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { ThemeToggle } from './ThemeToggle';
 import { BYPASS_PAYMENT_FOR_TESTING, BETA_PAYMENTS } from '../App';
 
 interface Props {
@@ -67,7 +65,6 @@ export function Builder({
 }: Props) {
   const [active, setActive] = useState<SectionKey>('personal');
   const [previewOpen, setPreviewOpen] = useState(false);
-  const toast = useToast();
   const { t, locale } = useT();
 
   useKeyboardShortcuts({ onUndo, onRedo });
@@ -89,11 +86,13 @@ export function Builder({
   const priceUpdate = formatPrice(PRICES.updateCents, locale);
 
   const isPayable = cv.personal.fullName.trim().length > 0;
-  const payLabel = paying
-    ? t('builder.actions.payPreparing')
-    : mode === 'update'
-      ? t('builder.actions.payUpdate', { updatePrice: priceUpdate })
-      : t('builder.actions.payNew',    { price: priceNew });
+  const payLabel = BETA_PAYMENTS
+    ? t('beta.payDisabled')
+    : paying
+      ? t('builder.actions.payPreparing')
+      : mode === 'update'
+        ? t('builder.actions.payUpdate', { updatePrice: priceUpdate })
+        : t('builder.actions.payNew',    { price: priceNew });
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -121,22 +120,9 @@ export function Builder({
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
           </IconBtn>
 
-          {import.meta.env.DEV && (
-            <>
-              <span className="mx-1 h-5 w-px bg-white/10" />
-              <button
-                className="btn-ghost text-[11px] px-2 py-1.5"
-                title="Dev — gerar PDF sem pagar"
-                onClick={async () => {
-                  const base = slugify(cv.personal.fullName) || 'cv';
-                  try { await downloadDevPdf(cv, { filename: `${base}.pdf` }); }
-                  catch (err) { toast.push({ kind: 'error', title: t('toast.pdfFailTitle'), body: (err as Error).message }); }
-                }}
-              >dev: PDF</button>
-            </>
-          )}
-
           <span className="mx-1 h-5 w-px bg-white/10" />
+
+          <ThemeToggle />
 
           <LanguageSwitcher />
 
@@ -150,8 +136,8 @@ export function Builder({
           <button
             className="btn-primary text-sm whitespace-nowrap"
             onClick={onPay}
-            disabled={paying || !isPayable}
-            title={isPayable ? '' : t('builder.actions.nameRequired')}
+            disabled={BETA_PAYMENTS || paying || !isPayable}
+            title={BETA_PAYMENTS ? t('beta.badgeTitle') : (isPayable ? '' : t('builder.actions.nameRequired'))}
           >{payLabel}</button>
         </div>
       </nav>
@@ -173,7 +159,7 @@ export function Builder({
 
       {/* Beta banner — payments not live yet. Hidden once BETA_PAYMENTS is off. */}
       {BETA_PAYMENTS && !BYPASS_PAYMENT_FOR_TESTING && (
-        <div className="px-4 sm:px-6 py-2 text-[12px] text-amber-200/90 bg-amber-500/10 border-b border-amber-400/15 text-center">
+        <div className="px-4 sm:px-6 py-2 text-[12px] text-center border-b text-amber-800 bg-amber-400/15 border-amber-500/30 dark:text-amber-200/90 dark:bg-amber-500/10 dark:border-amber-400/15">
           {t('beta.banner')}
         </div>
       )}

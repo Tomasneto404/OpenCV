@@ -50,6 +50,10 @@ de fulfillment (`/webhook/stripe`) para pagamentos assíncronos
 - `STRIPE_WEBHOOK_SECRET=whsec_…` (do endpoint live, **não** do `stripe listen`)
 - `CLIENT_URL=https://cveaver.com`
 - `NODE_ENV=production` (desliga `/dev/pdf` e `/dev/test-email`)
+- `BETA_MODE=false` (reativa a geração de PDFs). **Em sincronia** com
+  `BETA_PAYMENTS = false` em `client/src/App.tsx`. Enquanto beta está on,
+  `/create-checkout-session`, `/pdf`, `/fulfill` e o webhook recusam — ninguém
+  consegue gerar um CV.
 - `STRIPE_PAYMENT_METHODS` — deixar **unset** para Dynamic Payment Methods
   (Stripe mostra o que estiver ativo no Dashboard). Só definir para fixar.
 - Rodar a **Resend API key** colada no chat de teste (`re_JR7XgKKV…`) por uma key live.

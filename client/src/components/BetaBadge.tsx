@@ -12,7 +12,7 @@ export function BetaBadge({ className = '' }: { className?: string }) {
   return (
     <span
       title={t('beta.badgeTitle')}
-      className={`inline-flex items-center rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-300 select-none ${className}`}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider select-none border-amber-500/60 bg-amber-400/20 text-amber-800 dark:border-amber-400/40 dark:bg-amber-400/10 dark:text-amber-300 ${className}`}
     >
       {t('beta.badge')}
     </span>

@@ -239,6 +239,11 @@ export function App() {
   }, [locale, sampleLocale, replace]);
 
   const pay = async () => {
+    if (BETA_PAYMENTS) {
+      // Payments (and therefore PDF generation) are disabled during beta.
+      toast.push({ kind: 'info', title: t('beta.badge'), body: t('beta.banner') });
+      return;
+    }
     setPaying(true);
     try {
       const customerEmail = currentMeta?.lastSentEmail ?? undefined;

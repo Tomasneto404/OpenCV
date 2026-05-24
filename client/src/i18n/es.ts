@@ -139,7 +139,8 @@ export const dict: Dict = {
   beta: {
     badge: 'Beta',
     badgeTitle: 'Los pagos están en pruebas — todavía no hay cargos reales.',
-    banner: 'Beta — los pagos están en modo de prueba. Puedes probar todo el flujo, pero todavía no hay cargos reales.',
+    banner: 'Beta — los pagos están en modo de prueba y la generación de PDFs está desactivada. Puedes probar todo lo demás, pero todavía no puedes pagar ni descargar el CV.',
+    payDisabled: 'Próximamente',
   },
   support: {
     navBack: '← Volver',

@@ -140,7 +140,8 @@ export const dict: Dict = {
   beta: {
     badge: 'Bêta',
     badgeTitle: 'Les paiements sont en test — aucun débit réel pour l\'instant.',
-    banner: 'Bêta — les paiements sont en mode test. Vous pouvez essayer tout le parcours, mais il n\'y a pas encore de débit réel.',
+    banner: 'Bêta — les paiements sont en mode test et la génération de PDF est désactivée. Vous pouvez essayer tout le reste, mais vous ne pouvez pas encore payer ni télécharger le CV.',
+    payDisabled: 'Bientôt',
   },
   support: {
     navBack: '← Retour',

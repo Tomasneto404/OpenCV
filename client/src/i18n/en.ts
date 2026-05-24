@@ -198,7 +198,8 @@ export const dict: Dict = {
   beta: {
     badge: 'Beta',
     badgeTitle: 'Payments are in testing — no real charges yet.',
-    banner: 'Beta — payments are in test mode. You can try the whole flow, but there are no real charges yet.',
+    banner: 'Beta — payments are in test mode and PDF generation is disabled. You can try everything else, but you can\'t pay or download the CV yet.',
+    payDisabled: 'Coming soon',
   },
   support: {
     navBack: '← Back',

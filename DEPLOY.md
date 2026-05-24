@@ -65,9 +65,14 @@ After the account is activated:
    `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
    `checkout.session.async_payment_failed`. Paste its `whsec_…` into
    `STRIPE_WEBHOOK_SECRET`.
-4. Flip the **Beta flag**: `BETA_PAYMENTS = false` in `client/src/App.tsx`
-   (removes the Beta badge/banner). See also `.claude/REVERT_BEFORE_PROD.md`
-   for the remaining test-code cleanup.
+4. Turn off **Beta** (two flags, kept in sync):
+   - server: `BETA_MODE=false` in `.env` (re-enables PDF generation), and
+   - client: `BETA_PAYMENTS = false` in `client/src/App.tsx` (removes the
+     Beta badge/banner and re-enables the pay button).
+
+   While beta is on, PDF generation is fully disabled — `/create-checkout-session`,
+   `/pdf`, `/fulfill` and webhook delivery all refuse, so no CV can be obtained.
+   See also `.claude/REVERT_BEFORE_PROD.md` for the remaining test-code cleanup.
 5. `docker compose up -d --build` to apply.
 
 ## 6. Backups — critical

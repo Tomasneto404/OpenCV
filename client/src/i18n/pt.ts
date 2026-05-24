@@ -216,7 +216,8 @@ export const dict = {
   beta: {
     badge: 'Beta',
     badgeTitle: 'Pagamentos em fase de testes — ainda não há cobranças reais.',
-    banner: 'Beta — os pagamentos estão em modo de teste. Podes experimentar todo o fluxo, mas ainda não há cobranças reais.',
+    banner: 'Beta — os pagamentos estão em modo de teste e a geração de PDFs está desativada. Podes experimentar todo o resto, mas ainda não é possível pagar nem descarregar o CV.',
+    payDisabled: 'Em breve',
   },
 
   support: {

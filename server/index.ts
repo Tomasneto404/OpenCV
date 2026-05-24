@@ -73,6 +73,13 @@ const PAYMENT_METHODS = PAYMENT_METHODS_ENV
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
+/* Beta mode — payments aren't live, so PDF generation is fully disabled: no
+   checkout, no paywall render, no email delivery. Prevents anyone from
+   obtaining the paid product for free while the flow is still in testing.
+   Fail-safe: ON unless explicitly disabled with BETA_MODE=false. Mirror the
+   client's BETA_PAYMENTS flag; flip both (and swap to live keys) to go live. */
+const BETA_MODE = process.env.BETA_MODE !== 'false';
+
 /* Entries older than this are evicted at write time to avoid unbounded
    disk growth from abandoned drafts. */
 const STORE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -337,6 +344,10 @@ async function buildPaidPdf(
 /** Idempotently render + email the paid PDF for a Checkout session. Used by
     the webhook (async methods) and as the email side-effect of /pdf. */
 async function deliverForSession(session: Stripe.Checkout.Session): Promise<void> {
+  if (BETA_MODE) {
+    console.log('[deliver] beta mode — skipping PDF delivery');
+    return;
+  }
   const cvId = session.metadata?.cvId;
   if (!cvId || !ID_RE.test(cvId)) {
     console.warn('[deliver] session without valid cvId metadata');
@@ -372,6 +383,7 @@ async function deliverForSession(session: Stripe.Checkout.Session): Promise<void
 }
 
 app.post('/create-checkout-session', checkoutLimiter, async (req: Request, res: Response) => {
+  if (BETA_MODE) return res.status(503).json({ error: 'Payments are in beta', beta: true });
   try {
     const { cvId, mode, customerEmail } = req.body as {
       cvId?: unknown; mode?: unknown; customerEmail?: unknown;
@@ -418,6 +430,7 @@ app.get('/verify-session/:sessionId', standardLimiter, async (req: Request, res:
    that guard with the webhook and /pdf, so the email goes out exactly once.
    Uses the email collected by Stripe Checkout (session.customer_details). */
 app.get('/fulfill/:sessionId', standardLimiter, async (req: Request, res: Response) => {
+  if (BETA_MODE) return res.status(503).json({ delivered: false, beta: true });
   const sid = req.params.sessionId;
   if (typeof sid !== 'string' || !STRIPE_SESSION_RE.test(sid)) {
     return res.status(400).json({ delivered: false });
@@ -445,6 +458,7 @@ app.get('/fulfill/:sessionId', standardLimiter, async (req: Request, res: Respon
 /* ── /pdf/:sessionId — the paywall + email delivery ────── */
 
 app.get('/pdf/:sessionId', pdfLimiter, async (req: Request, res: Response) => {
+  if (BETA_MODE) return res.status(503).json({ error: 'Payments are in beta', beta: true });
   try {
     const sessionId = req.params.sessionId;
     const cvId      = req.query.cv_id;
@@ -728,5 +742,6 @@ app.listen(PORT, () => {
   console.log(`CVeaver server :${PORT}`);
   console.log(`store: ${DATA_FILE}`);
   console.log(`payment methods: ${PAYMENT_METHODS ? PAYMENT_METHODS.join(', ') : 'dynamic (Stripe Dashboard)'}`);
+  console.log(`beta mode: ${BETA_MODE ? 'ON — PDF generation disabled' : 'off'}`);
   console.log(`env: ${IS_PROD ? 'production' : 'development'}`);
 });

@@ -15,7 +15,7 @@ ENV VITE_STRIPE_PUBLISHABLE_KEY=$VITE_STRIPE_PUBLISHABLE_KEY
 RUN npm run build
 
 # ── Runtime: nginx ─────────────────────────────────────────────────────
-FROM nginx:1.27-alpine AS runner
+FROM nginx:1.31-alpine AS runner
 RUN apk add --no-cache wget tini && \
     addgroup -g 1001 -S app && \
     adduser  -u 1001 -S app -G app && \

@@ -4,6 +4,11 @@ Production stack: **Traefik** (TLS + routing) + **server** (`api.${DOMAIN}`) +
 **client** (`${DOMAIN}`), all in `docker-compose.yml`. Self-contained — no
 external reverse proxy needed.
 
+A tiny `dockerproxy` service (nginx, `deploy/docker-proxy.conf`) sits between
+Traefik and the Docker socket: it rewrites the Docker API version so Traefik's
+older client works against modern daemons (Engine 29+ rejects API < 1.40). It
+starts automatically — no daemon-side change required.
+
 ## 1. VPS
 
 - Recommended: **Hetzner CX22** (2 vCPU, 4 GB RAM), EU region for PT latency.

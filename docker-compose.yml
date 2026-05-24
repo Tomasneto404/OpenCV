@@ -23,13 +23,29 @@
 
 services:
 
+  # Rewrites the Docker API version so Traefik (client 1.24) can talk to a
+  # modern daemon (Engine 29+ rejects API < 1.40). See deploy/docker-proxy.conf.
+  dockerproxy:
+    image: nginx:1.27-alpine
+    container_name: cveaver-dockerproxy
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./deploy/docker-proxy.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - traefik
+
   traefik:
     image: traefik:v3.3
     container_name: traefik
     restart: unless-stopped
+    depends_on:
+      - dockerproxy
     command:
-      # Providers
+      # Providers — talk to the daemon through dockerproxy (API version rewrite),
+      # not the raw socket, so Docker 29+ (min API 1.40) doesn't reject Traefik.
       - --providers.docker=true
+      - --providers.docker.endpoint=tcp://dockerproxy:2375
       - --providers.docker.exposedbydefault=false
       - --providers.docker.network=traefik
       # Entrypoints
@@ -52,7 +68,6 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik-acme:/letsencrypt
     networks:
       - traefik

@@ -37,19 +37,35 @@ export interface SaleInfo {
 
 let warned = false;
 
-/** Fire-and-forget owner notification. Resolves to true when a ping was sent. */
-export async function notifyOwnerOfSale(info: SaleInfo): Promise<boolean> {
+/** Fire-and-forget owner notification of a paid sale. */
+export function notifyOwnerOfSale(info: SaleInfo): Promise<boolean> {
+  return sendTelegram(buildMessage(info), 'sale ping');
+}
+
+/** Fire-and-forget ping when the server boots — a deploy/restart heartbeat. */
+export function notifyServerStarted(): Promise<boolean> {
+  const env = process.env.NODE_ENV || 'development';
+  const time = new Date().toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' });
+  const text = [
+    '🟢 <b>CVeaver server iniciado</b>',
+    `• Ambiente: ${escapeHtml(env)}`,
+    `• Hora: ${time}`,
+  ].join('\n');
+  return sendTelegram(text, 'startup ping');
+}
+
+/** Shared Telegram sender. Best-effort: never throws, silent no-op when the
+    bot isn't configured (warns once). `label` only tags the success log. */
+async function sendTelegram(text: string, label: string): Promise<boolean> {
   const token  = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) {
     if (!warned) {
-      console.warn('[notify] TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set — sale pings disabled.');
+      console.warn('[notify] TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set — Telegram pings disabled.');
       warned = true;
     }
     return false;
   }
-
-  const text = buildMessage(info);
 
   try {
     const resp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -61,7 +77,7 @@ export async function notifyOwnerOfSale(info: SaleInfo): Promise<boolean> {
         parse_mode: 'HTML',
         disable_web_page_preview: true,
       }),
-      // Don't let a slow Telegram hang the webhook path.
+      // Don't let a slow Telegram hang the caller (webhook / boot).
       signal: AbortSignal.timeout(8000),
     });
     if (!resp.ok) {
@@ -69,7 +85,7 @@ export async function notifyOwnerOfSale(info: SaleInfo): Promise<boolean> {
       console.error(`[notify] telegram rejected ${resp.status}: ${detail.slice(0, 200)}`);
       return false;
     }
-    console.log('[notify] sale ping sent');
+    console.log(`[notify] ${label} sent`);
     return true;
   } catch (err) {
     console.error('[notify] send failed:', (err as Error).message);

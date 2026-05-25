@@ -39,7 +39,7 @@ import { signCV, verifyCV, getPublicKey } from './sign.js';
 import { renderPdf } from './pdf/render.ts';
 import { readPayloadFromPdf } from './pdf/read.ts';
 import { sendCvByEmail } from './mail.ts';
-import { notifyOwnerOfSale } from './notify.ts';
+import { notifyOwnerOfSale, notifyServerStarted } from './notify.ts';
 import type { CVData, CVMeta, EmbedPayloadV2 } from './types.ts';
 import {
   randomId,
@@ -791,4 +791,6 @@ app.listen(PORT, () => {
   console.log(`payment methods: ${PAYMENT_METHODS ? PAYMENT_METHODS.join(', ') : 'dynamic (Stripe Dashboard)'}`);
   console.log(`beta mode: ${BETA_MODE ? 'ON — PDF generation disabled' : 'off'}`);
   console.log(`env: ${IS_PROD ? 'production' : 'development'}`);
+  // Deploy/restart heartbeat — fire-and-forget, never blocks boot.
+  void notifyServerStarted();
 });

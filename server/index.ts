@@ -360,14 +360,29 @@ async function deliverForSession(session: Stripe.Checkout.Session): Promise<void
   }
   if (stored.delivered) return; // already emailed — idempotent
 
-  const customerEmail = session.customer_details?.email || stored.customerEmail || null;
+  // Deliver ONLY to the email collected by Stripe Checkout. We never fall back
+  // to a stored/previous email: the buyer may type a different address on the
+  // payment page, and that's the one that must receive the PDF.
+  const customerEmail = session.customer_details?.email || null;
   if (!customerEmail) {
     console.warn(`[deliver] no email on session for cv ${cvId.slice(0, 8)}… — cannot deliver`);
     return;
   }
 
+  // Claim delivery synchronously — BEFORE any await — so a concurrent caller
+  // (webhook + /fulfill + /pdf can fire near-simultaneously for a card session)
+  // sees `delivered` already set and bails, instead of both passing the check
+  // above and sending twice. Released back to false on failure so Stripe's
+  // webhook retry (and the user's download) can try again.
+  stored.delivered = true;
+  saveStore(store);
+
   const built = await buildPaidPdf(cvId, customerEmail);
-  if (!built) return;
+  if (!built) {
+    stored.delivered = false;
+    saveStore(store);
+    return;
+  }
 
   const ok = await sendCvByEmail({
     to: customerEmail,
@@ -375,8 +390,8 @@ async function deliverForSession(session: Stripe.Checkout.Session): Promise<void
     filename: built.filename,
     fullName: stored.cv.personal.fullName,
   });
-  if (ok) {
-    stored.delivered = true;
+  if (!ok) {
+    stored.delivered = false;
     saveStore(store);
   }
   console.log(`[deliver] email ${ok ? 'sent' : 'failed'} → ${redactEmail(customerEmail)} (cv ${cvId.slice(0, 8)}…)`);
@@ -486,7 +501,10 @@ app.get('/pdf/:sessionId', pdfLimiter, async (req: Request, res: Response) => {
     const stored = store[cvId];
     if (!stored) return res.status(404).json({ error: 'CV not found' });
 
-    const customerEmail = session.customer_details?.email || stored.customerEmail || null;
+    // Deliver ONLY to the email collected by Stripe Checkout. We never fall back
+  // to a stored/previous email: the buyer may type a different address on the
+  // payment page, and that's the one that must receive the PDF.
+  const customerEmail = session.customer_details?.email || null;
 
     const built = await buildPaidPdf(cvId, customerEmail);
     if (!built) return res.status(404).json({ error: 'CV not found' });

@@ -10,7 +10,7 @@ export const dict: Dict = {
   },
   app: { title: 'CVeaver', tagline: 'Crea tu CV en minutos' },
   landing: {
-    nav: { howItWorks: 'Cómo funciona', support: 'Soporte', faq: 'FAQ', terms: 'Términos' },
+    nav: { howItWorks: 'Cómo funciona', support: 'Soporte', faq: 'FAQ', terms: 'Términos', about: 'Acerca de', contacts: 'Contacto', changelog: 'Novedades' },
     hero: {
       badge: 'Sin registro · Sin suscripción · Sin PII almacenado',
       piiTooltip: 'PII (Personally Identifiable Information) — datos personales que identifican a alguien, como nombre, email o teléfono. No guardamos ninguno.',
@@ -64,6 +64,9 @@ export const dict: Dict = {
         title: 'Legal',
         privacy: 'Privacidad',
         comingSoon: 'Próximamente',
+      },
+      company: {
+        title: 'Empresa',
       },
       copyright: '© {year} CVeaver. Todos los derechos reservados.',
       craftedIn: 'Hecho en Portugal · 🐾',
@@ -213,6 +216,43 @@ export const dict: Dict = {
         p: 'Para cuestiones o solicitudes relacionadas con el servicio, utiliza la página /support. Intentamos responder en un plazo razonable, pero no garantizamos plazos específicos.' },
     ],
   },
+  about: {
+    title: 'Sobre CVeaver',
+    subtitle: 'Un generador de currículums pensado para ser rápido, justo y respetuoso con tu privacidad.',
+    sections: [
+      { h: 'Qué es CVeaver',
+        p: 'CVeaver te ayuda a crear un currículum profesional en PDF a partir de un formulario sencillo, con vista previa en vivo. Sin cuentas y sin suscripciones: rellénalo, paga una vez y descárgalo.' },
+      { h: 'Cómo funciona',
+        p: 'Eliges una plantilla, rellenas las secciones y ves el resultado actualizarse en tiempo real. Cuando estés satisfecho, pagas con Stripe (tarjeta, Multibanco o MB WAY) y recibes el PDF para descargar y por correo. Más tarde puedes subir ese mismo PDF para editarlo, pagando solo la mitad.' },
+      { h: 'La privacidad primero',
+        p: 'No guardamos tu currículum ni creamos perfiles sobre ti. Tu contenido vive en tu navegador y solo se envía al servidor el tiempo necesario para generar el PDF. El correo que indicas en el pago se usa únicamente para enviarte una copia del archivo.' },
+      { h: 'Precio justo, sin sorpresas',
+        p: 'Pagas por uso: un precio único para crear el CV y la mitad por cada actualización. Sin cuotas mensuales, sin renovaciones automáticas y sin letra pequeña.' },
+      { h: 'Hecho en Portugal',
+        p: 'CVeaver es un proyecto independiente, diseñado y desarrollado en Portugal, con soporte nativo para Multibanco y MB WAY y atención al mercado portugués. 🐾' },
+    ],
+    ctaTitle: '¿Listo para empezar?',
+    ctaBody: 'Crea tu currículum ahora — solo lleva unos minutos.',
+    ctaButton: 'Crear mi CV',
+  },
+
+  contacts: {
+    title: 'Contacto',
+    subtitle: 'Habla con nosotros. Leemos todos los mensajes y respondemos lo antes posible.',
+    emailTitle: 'Correo',
+    emailBody: 'Para consultas generales, sugerencias, colaboraciones o prensa.',
+    socialTitle: 'Redes sociales',
+    socialBody: 'Sigue a CVeaver y envíanos un mensaje directo.',
+    supportTitle: '¿Necesitas ayuda con un CV o un pago?',
+    supportBody: 'Para problemas con un PDF generado o con un pago, usa la página de soporte: confirmamos que el PDF fue creado por CVeaver y puedes presentar una reclamación.',
+    supportButton: 'Ir a soporte',
+  },
+
+  changelog: {
+    title: 'Novedades',
+    subtitle: 'Las principales actualizaciones de CVeaver, de la más reciente a la más antigua.',
+  },
+
   toast: {
     cvLoaded: 'CV cargado',
     pdfNotRecognised: 'PDF no reconocido',

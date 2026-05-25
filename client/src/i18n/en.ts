@@ -31,6 +31,9 @@ export const dict: Dict = {
       support: 'Support',
       faq: 'FAQ',
       terms: 'Terms',
+      about: 'About',
+      contacts: 'Contact',
+      changelog: 'Changelog',
     },
     hero: {
       badge: 'No sign-up · No subscription · No PII stored',
@@ -98,6 +101,9 @@ export const dict: Dict = {
         title: 'Legal',
         privacy: 'Privacy',
         comingSoon: 'Soon',
+      },
+      company: {
+        title: 'Company',
       },
       copyright: '© {year} CVeaver. All rights reserved.',
       craftedIn: 'Made in Portugal · 🐾',
@@ -276,6 +282,43 @@ export const dict: Dict = {
         p: 'For questions or requests related to the service, use the /support page. We try to respond within a reasonable timeframe but do not guarantee specific timelines.' },
     ],
   },
+  about: {
+    title: 'About CVeaver',
+    subtitle: 'A résumé builder designed to be fast, fair and respectful of your privacy.',
+    sections: [
+      { h: 'What CVeaver is',
+        p: 'CVeaver helps you create a professional CV in PDF from a simple form, with a live preview. No accounts and no subscriptions: fill it in, pay once and download.' },
+      { h: 'How it works',
+        p: 'Pick a template, fill in the sections and watch the result update in real time. When you are happy, you pay via Stripe (card, Multibanco or MB WAY) and get the PDF to download and by email. Later you can upload that same PDF to edit it, paying only half.' },
+      { h: 'Privacy first',
+        p: 'We do not store your CV or build profiles about you. Your content lives in your browser and is only sent to the server for as long as it takes to generate the PDF. The email you provide at checkout is used solely to send you a copy of the file.' },
+      { h: 'Fair pricing, no surprises',
+        p: 'You pay per use: a single price to create the CV and half of that for each update. No monthly fees, no auto-renewals and no fine print.' },
+      { h: 'Made in Portugal',
+        p: 'CVeaver is an independent project, designed and built in Portugal, with native support for Multibanco and MB WAY and a focus on the Portuguese market. 🐾' },
+    ],
+    ctaTitle: 'Ready to start?',
+    ctaBody: 'Create your CV now — it only takes a few minutes.',
+    ctaButton: 'Create my CV',
+  },
+
+  contacts: {
+    title: 'Contact',
+    subtitle: 'Get in touch. We read every message and reply as soon as we can.',
+    emailTitle: 'Email',
+    emailBody: 'For general questions, suggestions, partnerships or press.',
+    socialTitle: 'Social media',
+    socialBody: 'Follow CVeaver and send us a direct message.',
+    supportTitle: 'Need help with a CV or payment?',
+    supportBody: 'For problems with a generated PDF or a payment, use the support page: we confirm the PDF was created by CVeaver and you can file a complaint.',
+    supportButton: 'Go to support',
+  },
+
+  changelog: {
+    title: 'Changelog',
+    subtitle: 'The major CVeaver updates, newest first.',
+  },
+
   toast: {
     cvLoaded: 'CV loaded',
     pdfNotRecognised: 'PDF not recognised',

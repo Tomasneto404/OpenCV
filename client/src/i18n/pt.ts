@@ -45,6 +45,9 @@ export const dict = {
       support: 'Suporte',
       faq: 'FAQ',
       terms: 'Termos',
+      about: 'Sobre',
+      contacts: 'Contactos',
+      changelog: 'Novidades',
     },
     hero: {
       badge: 'Sem registo · Sem subscrição · Sem PII guardado',
@@ -112,6 +115,9 @@ export const dict = {
         title: 'Legal',
         privacy: 'Privacidade',
         comingSoon: 'Em breve',
+      },
+      company: {
+        title: 'Empresa',
       },
       copyright: '© {year} CVeaver. Todos os direitos reservados.',
       craftedIn: 'Feito em Portugal · 🐾',
@@ -317,6 +323,43 @@ export const dict = {
       { h: '12. Contacto',
         p: 'Para questões ou pedidos relacionados com o serviço, utiliza a página /support. Tentamos responder em prazo razoável, mas não garantimos prazos específicos.' },
     ],
+  },
+
+  about: {
+    title: 'Sobre o CVeaver',
+    subtitle: 'Um gerador de currículos pensado para ser rápido, justo e respeitador da tua privacidade.',
+    sections: [
+      { h: 'O que é o CVeaver',
+        p: 'O CVeaver ajuda-te a criar um currículo profissional em PDF a partir de um formulário simples, com preview ao vivo. Sem contas e sem subscrições: preenches, pagas uma vez e descarregas.' },
+      { h: 'Como funciona',
+        p: 'Escolhes um template, preenches as secções e vês o resultado a atualizar em tempo real. Quando estiveres satisfeito, pagas via Stripe (Cartão, Multibanco ou MB WAY) e recebes o PDF para descarregar e por email. Mais tarde podes carregar esse mesmo PDF para editar, pagando apenas metade.' },
+      { h: 'Privacidade primeiro',
+        p: 'Não guardamos o teu currículo nem criamos perfis sobre ti. O conteúdo vive no teu browser e só é enviado ao servidor pelo tempo necessário para gerar o PDF. O email que indicas no pagamento serve apenas para te enviar a cópia do ficheiro.' },
+      { h: 'Preço justo, sem surpresas',
+        p: 'Pagas por utilização: um valor único para criar o CV e metade para cada atualização. Sem mensalidades, sem renovações automáticas e sem letras pequenas.' },
+      { h: 'Feito em Portugal',
+        p: 'O CVeaver é um projeto independente, desenhado e desenvolvido em Portugal, com suporte nativo a Multibanco e MB WAY e atenção ao mercado português. 🐾' },
+    ],
+    ctaTitle: 'Pronto para começar?',
+    ctaBody: 'Cria o teu currículo agora — demora só alguns minutos.',
+    ctaButton: 'Criar o meu CV',
+  },
+
+  contacts: {
+    title: 'Contactos',
+    subtitle: 'Fala connosco. Lemos todas as mensagens e respondemos assim que possível.',
+    emailTitle: 'Email',
+    emailBody: 'Para questões gerais, sugestões, parcerias ou imprensa.',
+    socialTitle: 'Redes sociais',
+    socialBody: 'Segue o CVeaver e envia-nos uma mensagem direta.',
+    supportTitle: 'Ajuda com um CV ou pagamento?',
+    supportBody: 'Para problemas com um PDF gerado ou com um pagamento, usa a página de suporte: confirmamos que o PDF foi criado pelo CVeaver e podes abrir uma reclamação.',
+    supportButton: 'Ir para o suporte',
+  },
+
+  changelog: {
+    title: 'Novidades',
+    subtitle: 'As principais atualizações do CVeaver, da mais recente para a mais antiga.',
   },
 
   toast: {

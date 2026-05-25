@@ -10,7 +10,7 @@ export const dict: Dict = {
   },
   app: { title: 'CVeaver', tagline: 'Créez votre CV en quelques minutes' },
   landing: {
-    nav: { howItWorks: 'Comment ça marche', support: 'Support', faq: 'FAQ', terms: 'Conditions' },
+    nav: { howItWorks: 'Comment ça marche', support: 'Support', faq: 'FAQ', terms: 'Conditions', about: 'À propos', contacts: 'Contact', changelog: 'Nouveautés' },
     hero: {
       badge: 'Sans inscription · Sans abonnement · Aucune PII stockée',
       piiTooltip: 'PII (Personally Identifiable Information) — données personnelles qui identifient quelqu\'un, comme le nom, l\'e-mail ou le téléphone. Nous n\'en stockons aucune.',
@@ -64,6 +64,9 @@ export const dict: Dict = {
         title: 'Légal',
         privacy: 'Confidentialité',
         comingSoon: 'Bientôt',
+      },
+      company: {
+        title: 'Entreprise',
       },
       copyright: '© {year} CVeaver. Tous droits réservés.',
       craftedIn: 'Fait au Portugal · 🐾',
@@ -214,6 +217,43 @@ export const dict: Dict = {
         p: 'Pour toute question ou demande liée au service, utilisez la page /support. Nous essayons de répondre dans un délai raisonnable mais ne garantissons aucun délai spécifique.' },
     ],
   },
+  about: {
+    title: 'À propos de CVeaver',
+    subtitle: 'Un générateur de CV conçu pour être rapide, juste et respectueux de ta vie privée.',
+    sections: [
+      { h: 'Qu’est-ce que CVeaver',
+        p: 'CVeaver t’aide à créer un CV professionnel en PDF à partir d’un formulaire simple, avec un aperçu en direct. Sans compte ni abonnement : tu remplis, tu paies une fois et tu télécharges.' },
+      { h: 'Comment ça marche',
+        p: 'Tu choisis un modèle, tu remplis les sections et tu vois le résultat se mettre à jour en temps réel. Quand tu es satisfait, tu paies via Stripe (carte, Multibanco ou MB WAY) et tu reçois le PDF à télécharger et par e-mail. Plus tard, tu peux téléverser ce même PDF pour le modifier en ne payant que la moitié.' },
+      { h: 'La confidentialité d’abord',
+        p: 'Nous ne conservons pas ton CV et ne créons aucun profil te concernant. Ton contenu reste dans ton navigateur et n’est envoyé au serveur que le temps nécessaire pour générer le PDF. L’e-mail indiqué au paiement sert uniquement à t’envoyer une copie du fichier.' },
+      { h: 'Un prix juste, sans surprise',
+        p: 'Tu paies à l’usage : un prix unique pour créer le CV et la moitié pour chaque mise à jour. Pas d’abonnement mensuel, pas de renouvellement automatique et pas de petits caractères.' },
+      { h: 'Fait au Portugal',
+        p: 'CVeaver est un projet indépendant, conçu et développé au Portugal, avec une prise en charge native de Multibanco et MB WAY et une attention portée au marché portugais. 🐾' },
+    ],
+    ctaTitle: 'Prêt à commencer ?',
+    ctaBody: 'Crée ton CV maintenant — cela ne prend que quelques minutes.',
+    ctaButton: 'Créer mon CV',
+  },
+
+  contacts: {
+    title: 'Contact',
+    subtitle: 'Écris-nous. Nous lisons tous les messages et répondons dès que possible.',
+    emailTitle: 'E-mail',
+    emailBody: 'Pour les questions générales, suggestions, partenariats ou presse.',
+    socialTitle: 'Réseaux sociaux',
+    socialBody: 'Suis CVeaver et envoie-nous un message direct.',
+    supportTitle: 'Besoin d’aide avec un CV ou un paiement ?',
+    supportBody: 'Pour un problème avec un PDF généré ou un paiement, utilise la page d’assistance : nous confirmons que le PDF a été créé par CVeaver et tu peux déposer une réclamation.',
+    supportButton: 'Aller à l’assistance',
+  },
+
+  changelog: {
+    title: 'Nouveautés',
+    subtitle: 'Les principales mises à jour de CVeaver, de la plus récente à la plus ancienne.',
+  },
+
   toast: {
     cvLoaded: 'CV chargé',
     pdfNotRecognised: 'PDF non reconnu',

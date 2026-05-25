@@ -1,5 +1,6 @@
 import type { TemplateId } from '../types';
 import { TEMPLATES } from '../templates';
+import { useT } from '../i18n';
 
 interface Props {
   value: TemplateId;
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export function TemplatePicker({ value, onChange }: Props) {
+  const { t: tr } = useT();
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
       {Object.values(TEMPLATES).map((t) => {
@@ -22,9 +24,13 @@ export function TemplatePicker({ value, onChange }: Props) {
               !t.available ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
             ].join(' ')}
           >
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-semibold">{t.label}</span>
-              {!t.available && <span className="text-[10px] uppercase tracking-wide text-white/40">em breve</span>}
+            <div className="flex items-center justify-between gap-1.5 mb-1">
+              <span className="text-sm font-semibold truncate min-w-0">{t.label}</span>
+              {!t.available && (
+                <span className="shrink-0 whitespace-nowrap rounded-full border border-white/15 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-white/45">
+                  {tr('landing.templates.comingSoon')}
+                </span>
+              )}
             </div>
             <p className="text-[11.5px] text-white/55 leading-snug">{t.description}</p>
           </button>

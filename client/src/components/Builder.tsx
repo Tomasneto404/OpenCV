@@ -116,10 +116,6 @@ export function Builder({
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
           </IconBtn>
 
-          <IconBtn onClick={() => setPreviewOpen(true)} title={t('builder.actions.preview')} extraClass="lg:hidden">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
-          </IconBtn>
-
           <span className="mx-1 h-5 w-px bg-white/10" />
 
           <ThemeToggle />
@@ -133,8 +129,10 @@ export function Builder({
               ? t('builder.modeUpdateCaption', { updatePrice: priceUpdate })
               : t('builder.modeNewCaption',    { price: priceNew })}
           </div>
+          {/* Primary CTA lives in the nav on desktop; on mobile it moves to the
+              sticky bottom action bar (thumb-reachable). */}
           <button
-            className="btn-primary text-sm whitespace-nowrap"
+            className="btn-primary text-sm whitespace-nowrap hidden lg:inline-flex"
             onClick={onPay}
             disabled={BETA_PAYMENTS || paying || !isPayable}
             title={BETA_PAYMENTS ? t('beta.badgeTitle') : (isPayable ? '' : t('builder.actions.nameRequired'))}
@@ -165,7 +163,7 @@ export function Builder({
       )}
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-0">
-        <aside className="border-r border-white/5 p-4 sm:p-5 space-y-4 lg:max-h-[calc(100vh-65px)] overflow-y-auto">
+        <aside className="border-r border-white/5 p-4 sm:p-5 pb-28 lg:pb-5 space-y-4 lg:max-h-[calc(100vh-65px)] overflow-y-auto">
           <div className="flex flex-wrap gap-1.5">
             {SECTION_KEYS.map((key) => {
               const st = sectionStatus(cv, key);
@@ -225,6 +223,25 @@ export function Builder({
         <main className="hidden lg:block p-6 lg:p-8 bg-black/20 overflow-auto max-h-[calc(100vh-65px)]">
           <Preview cv={cv} />
         </main>
+
+        {/* Mobile action bar — sticky to the bottom, within thumb reach.
+            Carries the two primary actions (preview + pay) that are too
+            important to bury in the crowded top nav on small screens. */}
+        <div
+          className="lg:hidden fixed bottom-0 inset-x-0 z-20 flex items-center gap-2 px-3 py-2.5 border-t border-[color:var(--color-border)] bg-[color:var(--color-surface-2)]/95 backdrop-blur"
+          style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))' }}
+        >
+          <button className="btn-ghost flex-1 text-sm" onClick={() => setPreviewOpen(true)}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            {t('builder.actions.preview')}
+          </button>
+          <button
+            className="btn-primary flex-[1.5] text-sm whitespace-nowrap"
+            onClick={onPay}
+            disabled={BETA_PAYMENTS || paying || !isPayable}
+            title={BETA_PAYMENTS ? t('beta.badgeTitle') : (isPayable ? '' : t('builder.actions.nameRequired'))}
+          >{payLabel}</button>
+        </div>
 
         {previewOpen && (
           <div className="lg:hidden fixed inset-0 z-30 bg-black/80 backdrop-blur-sm flex flex-col">

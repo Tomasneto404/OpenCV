@@ -10,7 +10,7 @@ export const dict: Dict = {
   },
   app: { title: 'CVeaver', tagline: 'Erstelle deinen Lebenslauf in Minuten' },
   landing: {
-    nav: { howItWorks: 'So funktioniert\'s', support: 'Support', faq: 'FAQ', terms: 'AGB' },
+    nav: { howItWorks: 'So funktioniert\'s', support: 'Support', faq: 'FAQ', terms: 'AGB', about: 'Über uns', contacts: 'Kontakt', changelog: 'Neuigkeiten' },
     hero: {
       badge: 'Ohne Anmeldung · Ohne Abo · Keine PII gespeichert',
       piiTooltip: 'PII (Personally Identifiable Information) — personenbezogene Daten, die jemanden identifizieren, etwa Name, E-Mail oder Telefon. Wir speichern keine davon.',
@@ -64,6 +64,9 @@ export const dict: Dict = {
         title: 'Rechtliches',
         privacy: 'Datenschutz',
         comingSoon: 'Demnächst',
+      },
+      company: {
+        title: 'Unternehmen',
       },
       copyright: '© {year} CVeaver. Alle Rechte vorbehalten.',
       craftedIn: 'Gemacht in Portugal · 🐾',
@@ -213,6 +216,43 @@ export const dict: Dict = {
         p: 'Für Fragen oder Anfragen zum Dienst nutze die /support-Seite. Wir versuchen, innerhalb eines angemessenen Zeitraums zu antworten, garantieren jedoch keine bestimmten Fristen.' },
     ],
   },
+  about: {
+    title: 'Über CVeaver',
+    subtitle: 'Ein Lebenslauf-Generator, der schnell, fair und respektvoll mit deiner Privatsphäre umgeht.',
+    sections: [
+      { h: 'Was CVeaver ist',
+        p: 'CVeaver hilft dir, aus einem einfachen Formular einen professionellen Lebenslauf als PDF zu erstellen – mit Live-Vorschau. Ohne Konto und ohne Abo: ausfüllen, einmal bezahlen und herunterladen.' },
+      { h: 'So funktioniert es',
+        p: 'Du wählst eine Vorlage, füllst die Abschnitte aus und siehst das Ergebnis in Echtzeit. Wenn du zufrieden bist, zahlst du über Stripe (Karte, Multibanco oder MB WAY) und erhältst das PDF zum Download und per E-Mail. Später kannst du dasselbe PDF hochladen, um es zu bearbeiten, und zahlst nur die Hälfte.' },
+      { h: 'Datenschutz zuerst',
+        p: 'Wir speichern deinen Lebenslauf nicht und erstellen keine Profile über dich. Deine Inhalte bleiben in deinem Browser und werden nur so lange an den Server gesendet, wie es zur PDF-Erstellung nötig ist. Die beim Bezahlen angegebene E-Mail dient ausschließlich dazu, dir eine Kopie der Datei zu schicken.' },
+      { h: 'Faire Preise, keine Überraschungen',
+        p: 'Du zahlst pro Nutzung: einen einmaligen Preis für die Erstellung und die Hälfte für jede Aktualisierung. Keine monatlichen Gebühren, keine automatische Verlängerung und kein Kleingedrucktes.' },
+      { h: 'Hergestellt in Portugal',
+        p: 'CVeaver ist ein unabhängiges Projekt, entworfen und entwickelt in Portugal, mit nativer Unterstützung für Multibanco und MB WAY und Fokus auf den portugiesischen Markt. 🐾' },
+    ],
+    ctaTitle: 'Bereit loszulegen?',
+    ctaBody: 'Erstelle jetzt deinen Lebenslauf — es dauert nur ein paar Minuten.',
+    ctaButton: 'Meinen Lebenslauf erstellen',
+  },
+
+  contacts: {
+    title: 'Kontakt',
+    subtitle: 'Schreib uns. Wir lesen jede Nachricht und antworten so schnell wie möglich.',
+    emailTitle: 'E-Mail',
+    emailBody: 'Für allgemeine Fragen, Vorschläge, Kooperationen oder Presse.',
+    socialTitle: 'Soziale Medien',
+    socialBody: 'Folge CVeaver und schreib uns eine Direktnachricht.',
+    supportTitle: 'Hilfe bei einem Lebenslauf oder einer Zahlung?',
+    supportBody: 'Bei Problemen mit einem erstellten PDF oder einer Zahlung nutze die Support-Seite: Wir bestätigen, dass das PDF von CVeaver erstellt wurde, und du kannst eine Beschwerde einreichen.',
+    supportButton: 'Zum Support',
+  },
+
+  changelog: {
+    title: 'Neuigkeiten',
+    subtitle: 'Die wichtigsten CVeaver-Updates, neueste zuerst.',
+  },
+
   toast: {
     cvLoaded: 'CV geladen',
     pdfNotRecognised: 'PDF nicht erkannt',

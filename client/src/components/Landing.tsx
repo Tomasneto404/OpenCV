@@ -87,6 +87,12 @@ export function Landing({ onNew, onLoadConfig, onSample, onNavigate }: Props) {
             <a href="/support" onClick={(e) => { e.preventDefault(); onNavigate('/support'); }} className="inline-flex h-9 items-center px-3 text-sm text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] transition">
               {t('landing.nav.support')}
             </a>
+            <a href="/about" onClick={(e) => { e.preventDefault(); onNavigate('/about'); }} className="hidden md:inline-flex h-9 items-center px-3 text-sm text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] transition">
+              {t('landing.nav.about')}
+            </a>
+            <a href="/contacts" onClick={(e) => { e.preventDefault(); onNavigate('/contacts'); }} className="hidden md:inline-flex h-9 items-center px-3 text-sm text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] transition">
+              {t('landing.nav.contacts')}
+            </a>
             <span className="hidden sm:inline-block w-px h-5 bg-[color:var(--color-border)] mx-1" />
             <LanguageSwitcher />
             <ThemeToggle />
@@ -268,11 +274,17 @@ export function Landing({ onNew, onLoadConfig, onSample, onNavigate }: Props) {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-8">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
               <FooterCol title={t('landing.footerNav.product.title')}>
                 <FooterLink onClick={onNew}>{t('landing.footerNav.product.create')}</FooterLink>
                 <FooterLink onClick={() => fileRef.current?.click()}>{t('landing.footerNav.product.update')}</FooterLink>
                 <FooterLink href="#how">{t('landing.footerNav.product.templates')}</FooterLink>
+              </FooterCol>
+
+              <FooterCol title={t('landing.footerNav.company.title')}>
+                <FooterLink onClick={() => onNavigate('/about')}>{t('landing.nav.about')}</FooterLink>
+                <FooterLink onClick={() => onNavigate('/contacts')}>{t('landing.nav.contacts')}</FooterLink>
+                <FooterLink onClick={() => onNavigate('/changelog')}>{t('landing.nav.changelog')}</FooterLink>
               </FooterCol>
 
               <FooterCol title={t('landing.footerNav.support.title')}>

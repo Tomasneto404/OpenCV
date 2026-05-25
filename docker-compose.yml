@@ -106,6 +106,11 @@ services:
       # Resend (email delivery)
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM: ${RESEND_FROM:-CVeaver <noreply@cveaver.com>}
+      # Owner sale notifications (Telegram). Both empty → silent no-op.
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      # Include customer email in the ping: off (default) | domain | full.
+      NOTIFY_INCLUDE_EMAIL: ${NOTIFY_INCLUDE_EMAIL:-off}
       # PDF tuning
       PDF_CONCURRENCY: ${PDF_CONCURRENCY:-4}
       # Optional: override the AES key (useful for multi-replica). When

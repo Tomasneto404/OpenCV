@@ -39,6 +39,7 @@ import { signCV, verifyCV, getPublicKey } from './sign.js';
 import { renderPdf } from './pdf/render.ts';
 import { readPayloadFromPdf } from './pdf/read.ts';
 import { sendCvByEmail } from './mail.ts';
+import { notifyOwnerOfSale } from './notify.ts';
 import type { CVData, CVMeta, EmbedPayloadV2 } from './types.ts';
 import {
   randomId,
@@ -99,6 +100,9 @@ interface StoreEntry {
      double-delivery when both the webhook and the synchronous /pdf path
      fire for the same (card) session. */
   delivered?: boolean;
+  /** Set once an owner sale-ping has been sent for this CV. Guards against
+     duplicate notifications when Stripe re-delivers the webhook event. */
+  notified?: boolean;
 }
 
 type Store = Record<string, StoreEntry>;
@@ -194,6 +198,9 @@ app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (re
       || event.type === 'checkout.session.async_payment_succeeded') {
       const session = event.data.object as Stripe.Checkout.Session;
       if (session.payment_status === 'paid') {
+        // Ping the owner about the sale (fire-and-forget — must not block the
+        // webhook ACK nor fail PDF delivery). Idempotent on the store entry.
+        notifyOwnerOnce(session);
         await deliverForSession(session);
       }
     } else if (event.type === 'checkout.session.async_payment_failed') {
@@ -339,6 +346,28 @@ async function buildPaidPdf(
   const pdf = await renderLimit(() => renderPdf(cv, { signature, publicKey, meta }));
   const filename = safeFilename(`${cv.personal.fullName || 'cv'}.pdf`);
   return { pdf, meta, filename };
+}
+
+/** Notify the owner of a paid sale, at most once per CV draft. Fire-and-forget:
+    swallows its own errors so it can never break delivery or the webhook ACK.
+    Dedupe is keyed on the store entry's `notified` flag (Stripe retries events);
+    when the draft has expired we can't dedupe, so we ping anyway (rare). */
+function notifyOwnerOnce(session: Stripe.Checkout.Session): void {
+  const cvId = session.metadata?.cvId;
+  const stored = cvId && ID_RE.test(cvId) ? store[cvId] : undefined;
+  if (stored?.notified) return;
+  if (stored) {
+    stored.notified = true;
+    saveStore(store);
+  }
+  void notifyOwnerOfSale({
+    mode: session.metadata?.mode ?? null,
+    amount: session.amount_total,
+    currency: session.currency,
+    method: session.payment_method_types?.[0] ?? null,
+    sessionId: session.id,
+    email: session.customer_details?.email ?? null,
+  });
 }
 
 /** Idempotently render + email the paid PDF for a Checkout session. Used by

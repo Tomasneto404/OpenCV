@@ -27,6 +27,7 @@ import { Terms } from './components/Terms';
 import { About } from './components/About';
 import { Contacts } from './components/Contacts';
 import { Changelog } from './components/Changelog';
+import { Privacy } from './components/Privacy';
 import { useCV } from './state/useCV';
 import type { CVData, CVMeta } from './types';
 import type { Locale } from './i18n/types';
@@ -65,7 +66,7 @@ export const BYPASS_PAYMENT_FOR_TESTING = false;
 // =====================================================================
 export const BETA_PAYMENTS = false;
 
-type Screen = 'landing' | 'builder' | 'paid' | 'pending' | 'support' | 'faq' | 'terms' | 'about' | 'contacts' | 'changelog';
+type Screen = 'landing' | 'builder' | 'paid' | 'pending' | 'support' | 'faq' | 'terms' | 'about' | 'contacts' | 'changelog' | 'privacy';
 
 function pathToScreen(path: string): Screen {
   if (path.startsWith('/support') || path.startsWith('/verify')) return 'support';
@@ -74,6 +75,7 @@ function pathToScreen(path: string): Screen {
   if (path.startsWith('/about'))     return 'about';
   if (path.startsWith('/contact'))   return 'contacts';
   if (path.startsWith('/changelog')) return 'changelog';
+  if (path.startsWith('/privacy'))   return 'privacy';
   return 'landing';
 }
 
@@ -298,6 +300,7 @@ export function App() {
   if (screen === 'about')   return <About   onBack={() => navigate('/')} onStart={startNew} />;
   if (screen === 'contacts') return <Contacts onBack={() => navigate('/')} onNavigate={navigate} />;
   if (screen === 'changelog') return <Changelog onBack={() => navigate('/')} />;
+  if (screen === 'privacy')   return <Privacy   onBack={() => navigate('/')} />;
 
   if (screen === 'landing') {
     return <Landing onNew={startNew} onLoadConfig={loadConfig} onSample={loadSample} onNavigate={navigate} />;

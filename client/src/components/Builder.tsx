@@ -12,7 +12,7 @@
  *
  * All visible strings come from the i18n dictionary.
  */
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { CVData, CVMeta } from '../types';
 import { PersonalSection } from './Form/PersonalSection';
 import { SummarySection } from './Form/SummarySection';
@@ -65,9 +65,23 @@ export function Builder({
 }: Props) {
   const [active, setActive] = useState<SectionKey>('personal');
   const [previewOpen, setPreviewOpen] = useState(false);
+  /** Zoom that fits the A4 page (794px) to the phone width inside the preview
+   *  modal, so it never overflows the screen. Recomputed on open + resize. */
+  const [previewZoom, setPreviewZoom] = useState<number | undefined>(undefined);
   const { t, locale } = useT();
 
   useKeyboardShortcuts({ onUndo, onRedo });
+
+  useEffect(() => {
+    if (!previewOpen) return;
+    const fit = () => {
+      const avail = window.innerWidth - 32; // modal content has 16px padding each side
+      setPreviewZoom(Math.min(1, Math.max(0.3, avail / 794)));
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [previewOpen]);
 
   /** Helper: replace a top-level CV slice without mutating. */
   const patch = <K extends keyof CVData>(key: K, value: CVData[K]) =>
@@ -122,21 +136,29 @@ export function Builder({
 
           <LanguageSwitcher />
 
-          <span className="mx-1 h-5 w-px bg-white/10" />
+          {/* Desktop-only cluster: separator + price caption + pay CTA. On
+              mobile the CTA lives in the sticky bottom bar, so this whole group
+              is hidden — keeping it out avoids a dangling separator in the nav
+              and frees space for the action icons. */}
+          <span className="hidden lg:block mx-1 h-5 w-px bg-white/10" />
 
-          <div className="hidden md:block text-xs text-white/50 whitespace-nowrap">
+          <div className="hidden lg:block text-xs text-white/50 whitespace-nowrap">
             {mode === 'update'
               ? t('builder.modeUpdateCaption', { updatePrice: priceUpdate })
               : t('builder.modeNewCaption',    { price: priceNew })}
           </div>
-          {/* Primary CTA lives in the nav on desktop; on mobile it moves to the
-              sticky bottom action bar (thumb-reachable). */}
-          <button
-            className="btn-primary text-sm whitespace-nowrap hidden lg:inline-flex"
-            onClick={onPay}
-            disabled={BETA_PAYMENTS || paying || !isPayable}
-            title={BETA_PAYMENTS ? t('beta.badgeTitle') : (isPayable ? '' : t('builder.actions.nameRequired'))}
-          >{payLabel}</button>
+          {/* Wrapped in a div because `.btn-primary` sets `display:inline-flex`
+              outside any @layer, which beats Tailwind's layered `hidden`
+              utility — so `hidden` on the button itself wouldn't take. The
+              plain div hides cleanly. */}
+          <div className="hidden lg:block">
+            <button
+              className="btn-primary text-sm whitespace-nowrap"
+              onClick={onPay}
+              disabled={BETA_PAYMENTS || paying || !isPayable}
+              title={BETA_PAYMENTS ? t('beta.badgeTitle') : (isPayable ? '' : t('builder.actions.nameRequired'))}
+            >{payLabel}</button>
+          </div>
         </div>
       </nav>
 
@@ -249,8 +271,8 @@ export function Builder({
               <span className="text-sm text-white/80">{t('builder.mobilePreviewLabel')}</span>
               <button className="btn-ghost text-sm" onClick={() => setPreviewOpen(false)}>{t('common.close')} ✕</button>
             </div>
-            <div className="flex-1 overflow-auto p-4 bg-black/40">
-              <Preview cv={cv} />
+            <div className="flex-1 overflow-auto p-4 bg-black/40 flex justify-center">
+              <Preview cv={cv} zoom={previewZoom} />
             </div>
           </div>
         )}

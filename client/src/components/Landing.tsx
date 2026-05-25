@@ -111,16 +111,27 @@ export function Landing({ onNew, onLoadConfig, onSample, onNavigate }: Props) {
         >
           <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-accent-500)]" />
           {(() => {
-            // Wrap the "PII" token in an <abbr> so hovering explains it.
+            // "PII" gets a custom tooltip (the native <abbr title> one is slow
+            // and looks like an OS tooltip). Salient styling + instant explain.
             const parts = t('landing.hero.badge').split('PII');
             if (parts.length === 1) return parts[0];
             return (
               <span>
                 {parts[0]}
-                <abbr
-                  title={t('landing.hero.piiTooltip')}
-                  className="cursor-help no-underline border-b border-dotted border-current"
-                >PII</abbr>
+                <span className="group relative inline-block">
+                  <abbr
+                    tabIndex={0}
+                    aria-label={t('landing.hero.piiTooltip')}
+                    className="cursor-help font-semibold text-[color:var(--color-brand-500)] underline decoration-dotted decoration-1 underline-offset-2 outline-none"
+                  >PII</abbr>
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-64 max-w-[80vw] -translate-x-1/2 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-surface-1)] px-3 py-2 text-left text-[11.5px] font-normal leading-snug text-[color:var(--color-ink-muted)] opacity-0 invisible shadow-[var(--shadow-card)] transition-opacity duration-100 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+                  >
+                    {t('landing.hero.piiTooltip')}
+                    <span className="absolute left-1/2 top-full -ml-1 -mt-1 h-2 w-2 rotate-45 border-b border-r border-[color:var(--color-border)] bg-[color:var(--color-surface-1)]" />
+                  </span>
+                </span>
                 {parts.slice(1).join('PII')}
               </span>
             );
@@ -294,9 +305,7 @@ export function Landing({ onNew, onLoadConfig, onSample, onNavigate }: Props) {
 
               <FooterCol title={t('landing.footerNav.legal.title')}>
                 <FooterLink onClick={() => onNavigate('/terms')}>{t('landing.nav.terms')}</FooterLink>
-                <FooterLink disabledHint={t('landing.footerNav.legal.comingSoon')}>
-                  {t('landing.footerNav.legal.privacy')}
-                </FooterLink>
+                <FooterLink onClick={() => onNavigate('/privacy')}>{t('landing.footerNav.legal.privacy')}</FooterLink>
               </FooterCol>
             </div>
           </div>

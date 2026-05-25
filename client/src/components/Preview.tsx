@@ -27,11 +27,16 @@ interface Props {
   cv: CVData;
   refId?: string;
   paid?: boolean;
+  /** Overrides the responsive CSS `zoom` on each page (inline beats the
+   *  stylesheet). Used by the mobile preview modal to fit the page to the
+   *  viewport width exactly. Omit to keep the .cv-page breakpoint zoom. */
+  zoom?: number;
 }
 
-export function Preview({ cv, refId = 'cv-print-root', paid = false }: Props) {
+export function Preview({ cv, refId = 'cv-print-root', paid = false, zoom }: Props) {
   const Template = TEMPLATES[cv.template]?.component ?? TEMPLATES.modern.component;
   const certs = cv.certificates ?? [];
+  const zoomStyle = zoom != null ? { zoom } : undefined;
 
   return (
     <div className="flex flex-col items-center gap-6">
@@ -41,7 +46,7 @@ export function Preview({ cv, refId = 'cv-print-root', paid = false }: Props) {
         onDragStart={(e) => e.preventDefault()}
         style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
       >
-        <div id={refId} className="cv-page">
+        <div id={refId} className="cv-page" style={zoomStyle}>
           <Template cv={cv} />
         </div>
         {!paid && <WatermarkOverlay />}
@@ -56,6 +61,7 @@ export function Preview({ cv, refId = 'cv-print-root', paid = false }: Props) {
               template={cv.template}
               accent={cv.accentColor || '#98641f'}
               paid={paid}
+              zoom={zoom}
             />
           ))}
         </div>
@@ -68,8 +74,8 @@ export function Preview({ cv, refId = 'cv-print-root', paid = false }: Props) {
    `framed === false` falls back to a bare 1:1 thumbnail centred in a
    white page. Otherwise the layout is picked by template. */
 function CertificatePagePreview({
-  cert, template, accent, paid,
-}: { cert: CertificateItem; template: TemplateId; accent: string; paid?: boolean }) {
+  cert, template, accent, paid, zoom,
+}: { cert: CertificateItem; template: TemplateId; accent: string; paid?: boolean; zoom?: number }) {
   const [thumb, setThumb] = useState<string | null>(null);
   const [busy,  setBusy]  = useState(true);
 
@@ -92,7 +98,7 @@ function CertificatePagePreview({
       className="cv-page relative inline-block"
       onContextMenu={(e) => e.preventDefault()}
       onDragStart={(e) => e.preventDefault()}
-      style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+      style={{ userSelect: 'none', WebkitUserSelect: 'none', ...(zoom != null ? { zoom } : {}) }}
     >
       <div
         style={{

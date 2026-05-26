@@ -13,12 +13,16 @@
 #   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, VITE_STRIPE_PUBLISHABLE_KEY
 #   RESEND_API_KEY, RESEND_FROM
 #
-# Volumes:
-#   traefik-acme   — Let's Encrypt cert store. Keep backed up.
-#   cveaver-keys   — Ed25519 + AES keys. **Backup is critical.**
-#                    Losing this volume makes every previously generated
-#                    PDF impossible to decode for the update flow.
-#   cveaver-data   — draft CVs + complaints (TTL 24h on drafts).
+# Persistence — bind mounts under ./data (relative to this file). Owned by the
+# server's runtime user (uid 1001); create + chown before first `up`:
+#   mkdir -p data/keys data/store data/letsencrypt
+#   chown -R 1001:1001 data/keys data/store      # data/letsencrypt stays root (traefik)
+#
+#   ./data/keys        — Ed25519 + AES keys. **Backup is critical.** Losing it
+#                        makes every previously generated PDF impossible to
+#                        decode for the update flow.
+#   ./data/store       — draft CVs + complaints (TTL 24h on drafts).
+#   ./data/letsencrypt — Let's Encrypt cert store. Keep backed up.
 # =============================================================================
 
 services:
@@ -68,7 +72,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - traefik-acme:/letsencrypt
+      - ./data/letsencrypt:/letsencrypt
     networks:
       - traefik
     labels:
@@ -116,9 +120,12 @@ services:
       # Optional: override the AES key (useful for multi-replica). When
       # unset the key is generated on first boot inside cveaver-keys.
       PAYLOAD_AES_KEY_B64: ${PAYLOAD_AES_KEY_B64:-}
+    # Bind mounts under ./data (relative to this compose file). The server runs
+    # as uid 1001 — these host dirs MUST be owned by 1001:1001 or key/data
+    # writes fail. See the migration note at the top of this file.
     volumes:
-      - cveaver-keys:/app/keys
-      - cveaver-data:/app/data
+      - ./data/keys:/app/keys
+      - ./data/store:/app/data
     networks:
       - traefik
     labels:
@@ -184,11 +191,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DOCKER_CONFIG_PATH:-/root/.docker/config.json}:/config.json:ro
     command: --interval ${WATCHTOWER_INTERVAL:-300} --cleanup --label-enable
-
-volumes:
-  traefik-acme:
-  cveaver-keys:
-  cveaver-data:
 
 networks:
   traefik:

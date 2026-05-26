@@ -230,6 +230,7 @@ export function Builder({
                 onChange={(p) => patch('personal', p)}
                 accentColor={cv.accentColor}
                 onAccentChange={(c) => patch('accentColor', c)}
+                nameLocked={mode === 'update'}
               />
             )}
             {active === 'summary'      && <SummarySection      value={cv.summary} onChange={(s) => patch('summary', s)} />}

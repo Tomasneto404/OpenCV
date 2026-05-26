@@ -161,6 +161,7 @@ export const dict = {
 
   personal: {
     fullName: 'Nome completo',
+    nameLockedHint: 'O nome fica bloqueado nas atualizações — para criar um CV com outro nome, começa um novo.',
     headline: 'Título / Headline',
     email: 'Email',
     phone: 'Telefone',

@@ -320,18 +320,34 @@ async function buildPaidPdf(
 ): Promise<{ pdf: Buffer; meta: CVMeta; filename: string } | null> {
   const stored = store[cvId];
   if (!stored) return null;
-  const cv = stored.cv;
   const now = new Date().toISOString();
 
   let prevMeta: CVMeta | null = null;
+  let lockedName: string | null = null;
   if (stored.prevPayloadB64) {
     try {
       const { decryptPayload } = await import('./crypto.js');
       const prev = decryptPayload(Buffer.from(stored.prevPayloadB64, 'base64')) as EmbedPayloadV2;
       if (prev?.meta) prevMeta = prev.meta;
+      const prevName = prev?.cv?.personal?.fullName;
+      if (typeof prevName === 'string' && prevName.trim().length > 0) lockedName = prevName;
     } catch {
       // Tampered or wrong-key → ignore, start fresh.
     }
+  }
+
+  // Name lock — anti-fraud. On an update the full name is pinned to the name on
+  // the original paid CV (carried in the embedded payload). Without this, anyone
+  // could buy one CV and then rebuild an entirely different one under a new name
+  // for the cheaper update price. Enforced here server-side, so a tampered
+  // client can't bypass it; the signature + embedded payload use this cv too,
+  // and the lock carries forward to the next update.
+  const cv: CVData =
+    lockedName && lockedName !== stored.cv.personal.fullName
+      ? { ...stored.cv, personal: { ...stored.cv.personal, fullName: lockedName } }
+      : stored.cv;
+  if (lockedName && lockedName !== stored.cv.personal.fullName) {
+    console.warn(`[pdf] name-lock enforced for cv ${cvId.slice(0, 8)}… (update attempted a name change)`);
   }
 
   const meta: CVMeta = {
@@ -442,6 +458,29 @@ app.post('/create-checkout-session', checkoutLimiter, async (req: Request, res: 
       && customerEmail.length < 256)
       ? customerEmail
       : undefined;
+
+    // Anti-fraud: the discounted update price is only legitimate when a real
+    // prior CVeaver PDF backs it. A valid prevPayloadB64 can only have been
+    // produced by our server (encrypted with the server-only AES key, handed
+    // out by /decode-pdf), so an attacker can't forge one. Without this check
+    // anyone could claim mode='update' and rebuild a brand-new CV for half price.
+    if (safeMode === 'update') {
+      let validPrev = false;
+      const prevB64 = store[cvId]?.prevPayloadB64;
+      if (prevB64) {
+        try {
+          const { decryptPayload } = await import('./crypto.js');
+          const prev = decryptPayload(Buffer.from(prevB64, 'base64')) as EmbedPayloadV2;
+          validPrev = Boolean(prev?.cv?.personal);
+        } catch {
+          validPrev = false;
+        }
+      }
+      if (!validPrev) {
+        console.warn(`[checkout] rejected update without a valid previous PDF (cv ${cvId.slice(0, 8)}…)`);
+        return res.status(400).json({ error: 'Update requires a valid previous CVeaver PDF', code: 'update_requires_prev' });
+      }
+    }
 
     const session = await stripe.checkout.sessions.create(
       buildCheckout({ cvId, mode: safeMode, customerEmail: safeEmail }),

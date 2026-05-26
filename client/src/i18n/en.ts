@@ -145,6 +145,7 @@ export const dict: Dict = {
   },
   personal: {
     fullName: 'Full name',
+    nameLockedHint: 'The name is locked on updates — to create a CV with a different name, start a new one.',
     headline: 'Title / Headline',
     email: 'Email',
     phone: 'Phone',

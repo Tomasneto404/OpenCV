@@ -95,7 +95,7 @@ export const dict: Dict = {
     mobilePreviewLabel: 'Vorschau',
   },
   personal: {
-    fullName: 'Vollständiger Name', headline: 'Titel / Headline', email: 'E-Mail', phone: 'Telefon',
+    fullName: 'Vollständiger Name', nameLockedHint: 'Der Name ist bei Aktualisierungen gesperrt — um einen Lebenslauf mit anderem Namen zu erstellen, beginne einen neuen.', headline: 'Titel / Headline', email: 'E-Mail', phone: 'Telefon',
     location: 'Ort', website: 'Website', linkedin: 'LinkedIn', github: 'GitHub',
     photo: 'Foto (optional)', photoPlaceholder: 'kein Foto', photoChoose: 'Foto wählen',
     photoChange: 'Foto ändern', photoProcessing: 'Wird verarbeitet...',

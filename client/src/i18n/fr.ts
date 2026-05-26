@@ -96,7 +96,7 @@ export const dict: Dict = {
     mobilePreviewLabel: 'Aperçu',
   },
   personal: {
-    fullName: 'Nom complet', headline: 'Titre / Headline', email: 'E-mail', phone: 'Téléphone',
+    fullName: 'Nom complet', nameLockedHint: 'Le nom est verrouillé lors des mises à jour — pour créer un CV avec un autre nom, commence un nouveau.', headline: 'Titre / Headline', email: 'E-mail', phone: 'Téléphone',
     location: 'Localisation', website: 'Site web', linkedin: 'LinkedIn', github: 'GitHub',
     photo: 'Photo (facultatif)', photoPlaceholder: 'sans photo', photoChoose: 'Choisir une photo',
     photoChange: 'Changer de photo', photoProcessing: 'Traitement...',

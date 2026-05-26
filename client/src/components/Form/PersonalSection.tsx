@@ -22,6 +22,9 @@ interface Props {
   onChange: (next: PersonalInfo) => void;
   accentColor: CVData['accentColor'];
   onAccentChange: (color: string) => void;
+  /** On the paid-update flow the name is pinned to the original CV (anti-fraud,
+   *  enforced server-side too). When true the name field is read-only. */
+  nameLocked?: boolean;
 }
 
 const SWATCHES = [
@@ -49,7 +52,7 @@ function isLikelyEmail(v: string): boolean {
   return EMAIL_RE.test(v.trim());
 }
 
-export function PersonalSection({ value, onChange, accentColor, onAccentChange }: Props) {
+export function PersonalSection({ value, onChange, accentColor, onAccentChange, nameLocked = false }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [hexDraft, setHexDraft] = useState(accentColor);
   const [hexInvalid, setHexInvalid] = useState(false);
@@ -100,8 +103,23 @@ export function PersonalSection({ value, onChange, accentColor, onAccentChange }
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div className="sm:col-span-2">
-        <label className="label">{t('personal.fullName')}</label>
-        <input className="field" value={value.fullName} onChange={(e) => set('fullName', e.target.value)} />
+        <label className="label flex items-center gap-1.5">
+          {t('personal.fullName')}
+          {nameLocked && (
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-white/40">
+              <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          )}
+        </label>
+        <input
+          className="field disabled:opacity-60 disabled:cursor-not-allowed"
+          value={value.fullName}
+          onChange={(e) => set('fullName', e.target.value)}
+          disabled={nameLocked}
+          readOnly={nameLocked}
+          title={nameLocked ? t('personal.nameLockedHint') : undefined}
+        />
+        {nameLocked && <p className="mt-1 text-[11px] text-white/45">{t('personal.nameLockedHint')}</p>}
       </div>
       <div className="sm:col-span-2">
         <label className="label">{t('personal.headline')}</label>

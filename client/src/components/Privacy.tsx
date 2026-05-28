@@ -8,15 +8,14 @@
 import { useI18n } from '../i18n';
 import { BrandMark } from './BrandMark';
 import { ThemeToggle } from './ThemeToggle';
+/** PRIVACY_VERSION drives the "Last updated" line — single source of truth. */
+import { PRIVACY_VERSION } from '../utils/legal';
 
-interface Props { onBack: () => void; }
+interface Props { onBack: () => void; onNavigate: (path: string) => void; }
 
 interface PrivacySection { h: string; p: string }
 
-/** Fixed revision date for the policy (not "now"). Update on real changes. */
-const LAST_UPDATED = '2026-05-25';
-
-export function Privacy({ onBack }: Props) {
+export function Privacy({ onBack, onNavigate }: Props) {
   const { t, raw, locale } = useI18n();
   const sections = raw<PrivacySection[]>('privacy.sections') ?? [];
 
@@ -34,7 +33,7 @@ export function Privacy({ onBack }: Props) {
         <header className="text-center">
           <h1 className="text-4xl font-bold tracking-tight" style={{ fontFamily: 'Fraunces, serif' }}>{t('privacy.title')}</h1>
           <p className="mt-3 text-white/55 text-sm">
-            {t('privacy.lastUpdated', { date: formatDate(LAST_UPDATED, locale) })}
+            {t('privacy.lastUpdated', { date: formatDate(PRIVACY_VERSION, locale) })}
           </p>
         </header>
 
@@ -52,6 +51,15 @@ export function Privacy({ onBack }: Props) {
             </section>
           ))}
         </div>
+
+        {/* Data-rights CTA — points to the dedicated /data-request page. */}
+        <section className="mt-10 rounded-2xl border border-[color:var(--color-border)] bg-white/[0.02] p-6">
+          <h2 className="text-base font-semibold">{t('privacy.rightsCtaTitle')}</h2>
+          <p className="mt-1 text-sm text-white/65 leading-relaxed">{t('privacy.rightsCtaBody')}</p>
+          <button className="btn-ghost mt-4 text-sm" onClick={() => onNavigate('/data-request')}>
+            {t('privacy.rightsCtaButton')} →
+          </button>
+        </section>
       </div>
     </div>
   );

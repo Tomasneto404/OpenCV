@@ -28,6 +28,8 @@ import { About } from './components/About';
 import { Contacts } from './components/Contacts';
 import { Changelog } from './components/Changelog';
 import { Privacy } from './components/Privacy';
+import { DataRequest } from './components/DataRequest';
+import { PrivacyNotice } from './components/PrivacyNotice';
 import { useCV } from './state/useCV';
 import type { CVData, CVMeta } from './types';
 import type { Locale } from './i18n/types';
@@ -66,16 +68,17 @@ export const BYPASS_PAYMENT_FOR_TESTING = false;
 // =====================================================================
 export const BETA_PAYMENTS = false;
 
-type Screen = 'landing' | 'builder' | 'paid' | 'pending' | 'support' | 'faq' | 'terms' | 'about' | 'contacts' | 'changelog' | 'privacy';
+type Screen = 'landing' | 'builder' | 'paid' | 'pending' | 'support' | 'faq' | 'terms' | 'about' | 'contacts' | 'changelog' | 'privacy' | 'data-request';
 
 function pathToScreen(path: string): Screen {
   if (path.startsWith('/support') || path.startsWith('/verify')) return 'support';
-  if (path.startsWith('/faq'))       return 'faq';
-  if (path.startsWith('/terms'))     return 'terms';
-  if (path.startsWith('/about'))     return 'about';
-  if (path.startsWith('/contact'))   return 'contacts';
-  if (path.startsWith('/changelog')) return 'changelog';
-  if (path.startsWith('/privacy'))   return 'privacy';
+  if (path.startsWith('/faq'))          return 'faq';
+  if (path.startsWith('/terms'))        return 'terms';
+  if (path.startsWith('/about'))        return 'about';
+  if (path.startsWith('/contact'))      return 'contacts';
+  if (path.startsWith('/changelog'))    return 'changelog';
+  if (path.startsWith('/privacy'))      return 'privacy';
+  if (path.startsWith('/data-request')) return 'data-request';
   return 'landing';
 }
 
@@ -300,10 +303,16 @@ export function App() {
   if (screen === 'about')   return <About   onBack={() => navigate('/')} onStart={startNew} />;
   if (screen === 'contacts') return <Contacts onBack={() => navigate('/')} onNavigate={navigate} />;
   if (screen === 'changelog') return <Changelog onBack={() => navigate('/')} />;
-  if (screen === 'privacy')   return <Privacy   onBack={() => navigate('/')} />;
+  if (screen === 'privacy')   return <Privacy   onBack={() => navigate('/')} onNavigate={navigate} />;
+  if (screen === 'data-request') return <DataRequest onBack={() => navigate('/')} />;
 
   if (screen === 'landing') {
-    return <Landing onNew={startNew} onLoadConfig={loadConfig} onSample={loadSample} onNavigate={navigate} />;
+    return (
+      <>
+        <Landing onNew={startNew} onLoadConfig={loadConfig} onSample={loadSample} onNavigate={navigate} />
+        <PrivacyNotice onNavigate={navigate} />
+      </>
+    );
   }
 
   if (screen === 'paid') {
@@ -344,6 +353,7 @@ export function App() {
       canRedo={canRedo}
       saving={saving}
       onLoadSample={loadSampleInBuilder}
+      onNavigate={navigate}
     />
   );
 }

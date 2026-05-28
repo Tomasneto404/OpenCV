@@ -63,6 +63,7 @@ export const dict: Dict = {
       legal: {
         title: 'Rechtliches',
         privacy: 'Datenschutz',
+        dataRequest: 'Meine Daten',
         comingSoon: 'Demnächst',
       },
       company: {
@@ -216,6 +217,25 @@ export const dict: Dict = {
         p: 'Für Fragen oder Anfragen zum Dienst nutze die /support-Seite. Wir versuchen, innerhalb eines angemessenen Zeitraums zu antworten, garantieren jedoch keine bestimmten Fristen.' },
     ],
   },
+
+  consent: {
+    title: 'Vor der Bezahlung',
+    intro: 'Bevor du zur Bezahlung weitergehst, brauchen wir deine Bestätigung in zwei Punkten. Dauert nur Sekunden.',
+    termsPrefix: 'Ich habe die',
+    termsLabel: 'Nutzungsbedingungen',
+    and: 'und die',
+    privacyLabel: 'Datenschutzerklärung gelesen und akzeptiere sie',
+    age: 'Ich bestätige, dass ich mindestens {age} Jahre alt bin.',
+    continue: 'Weiter zur Bezahlung',
+  },
+
+  notice: {
+    privacyTitle: 'Datenschutz',
+    privacyBody: 'Wir verwenden keine Tracking-Cookies. Die Nutzung wird anonym und aggregiert gemessen, ohne dich zu identifizieren.',
+    privacyLink: 'Mehr erfahren',
+    acknowledge: 'OK',
+  },
+
   about: {
     title: 'Über CVeaver',
     subtitle: 'Ein Lebenslauf-Generator, der schnell, fair und respektvoll mit deiner Privatsphäre umgeht.',
@@ -281,9 +301,36 @@ export const dict: Dict = {
         p: 'Serverseitige Lebenslauf-Entwürfe verfallen nach 24 Stunden. Beschwerden, die du uns sendest, werden nur so lange aufbewahrt, wie es zur Bearbeitung nötig ist. Wir führen keine langfristigen Verläufe oder Profile.' },
       { h: 'Änderungen dieser Erklärung',
         p: 'Wir können diese Erklärung gelegentlich aktualisieren. Das Datum oben zeigt die letzte Überarbeitung. Die fortgesetzte Nutzung von CVeaver nach einer Änderung gilt als Annahme der geltenden Fassung.' },
+      { h: 'Auftragsverarbeiter',
+        p: 'Für den Betrieb setzen wir auf eine kleine Anzahl spezialisierter Anbieter, jeweils in einer eng umrissenen Kategorie: einen Zahlungsabwickler (EU), einen Anbieter für transaktionalen E-Mail-Versand (EU), Cloud-Hosting (EU) und cookiefreie, anonyme Reichweitenmessung. Wir teilen mit keinem von ihnen mehr Daten als für die jeweilige Funktion strikt erforderlich, und alle sind vertraglich zu Vertraulichkeit und Sicherheit verpflichtet.' },
       { h: 'Kontakt',
         p: 'Bei Fragen zum Datenschutz erreichst du uns über die Kontaktseite. Wir versuchen, innerhalb einer angemessenen Frist zu antworten.' },
     ],
+    rightsCtaTitle: 'Deine Rechte ausüben',
+    rightsCtaBody: 'Du hast das Recht zu erfahren, welche Daten wir über dich verarbeiten, sowie Berichtigung oder Löschung zu verlangen. Da wir praktisch nichts speichern, lautet die Antwort meistens "es gibt nichts zu senden/löschen" — du kannst diese Rechte aber jederzeit ausüben.',
+    rightsCtaButton: 'Meine Daten anfragen',
+  },
+
+  dataRequest: {
+    title: 'Deine Daten',
+    subtitle: 'So greifst du auf deine Daten zu, korrigierst oder löschst sie.',
+    intro: 'CVeaver ist so konzipiert, dass möglichst wenig gespeichert wird: keine Konten, keine Profile, und serverseitige Entwürfe verfallen nach 24 Stunden. Falls du dennoch eines deiner DSGVO-Rechte ausüben möchtest, erklärt diese Seite, wie.',
+    sections: [
+      { h: 'Was wir über dich verarbeiten',
+        p: 'Praktisch nichts dauerhaft: Der Inhalt, den du im CV schreibst, bleibt in deinem Browser; der Server erhält ihn nur so lange, wie es zur PDF-Erzeugung nötig ist (Entwürfe werden nach 24 Stunden gelöscht). Die im Stripe Checkout angegebene E-Mail wird einmal verwendet, um dir das PDF zu senden. Keine Konten, keine Profile, keine langfristige Historie.' },
+      { h: 'Was du verlangen kannst',
+        p: 'Auskunft (ob wir etwas zu dir haben), Berichtigung, Löschung oder Widerspruch gegen die Verarbeitung. Da so wenig aufbewahrt wird, lautet die häufigste Antwort "wir haben nichts zu senden/löschen".' },
+      { h: 'Antwortfrist',
+        p: 'Wir antworten schriftlich innerhalb von 30 Tagen nach deiner Anfrage, wie es die DSGVO verlangt. Bei ungewöhnlich komplexen Anfragen können wir um weitere 60 Tage verlängern und informieren dich stets schriftlich.' },
+      { h: 'Aufsichtsbehörde',
+        p: 'Bist du der Ansicht, dass wir deine Anfrage nicht ordnungsgemäß behandelt haben, hast du das Recht, dich bei der zuständigen Datenschutzbehörde zu beschweren — in Deutschland bei der jeweiligen Landesbehörde, in Portugal bei der CNPD (cnpd.pt).' },
+    ],
+    ctaTitle: 'Anfrage senden',
+    ctaBody: 'Öffne deinen E-Mail-Client mit einer vorbereiteten Anfrage. Wir antworten schriftlich innerhalb der gesetzlichen 30-Tage-Frist.',
+    ctaButton: 'E-Mail öffnen',
+    ctaEmailLabel: 'Oder schreibe direkt an',
+    mailSubject: 'Anfrage zu meinen Daten (DSGVO)',
+    mailBody: 'Hallo CVeaver,\n\nIch möchte folgende(s) Recht(e) bezüglich meiner Daten ausüben (Zutreffendes ankreuzen):\n\n[ ] Auskunft (welche Daten habt ihr über mich)\n[ ] Berichtigung\n[ ] Löschung\n[ ] Sonstiges: _____\n\nZusätzliche Angaben (optional):\n\nDanke.',
   },
 
   toast: {

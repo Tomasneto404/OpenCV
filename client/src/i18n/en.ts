@@ -100,6 +100,7 @@ export const dict: Dict = {
       legal: {
         title: 'Legal',
         privacy: 'Privacy',
+        dataRequest: 'My data',
         comingSoon: 'Soon',
       },
       company: {
@@ -283,6 +284,25 @@ export const dict: Dict = {
         p: 'For questions or requests related to the service, use the /support page. We try to respond within a reasonable timeframe but do not guarantee specific timelines.' },
     ],
   },
+
+  consent: {
+    title: 'Before you pay',
+    intro: 'Before continuing to payment we need your confirmation on two things. Takes two seconds.',
+    termsPrefix: 'I have read and accept the',
+    termsLabel: 'Terms',
+    and: 'and the',
+    privacyLabel: 'Privacy Policy',
+    age: 'I confirm I am at least {age} years old.',
+    continue: 'Continue to payment',
+  },
+
+  notice: {
+    privacyTitle: 'Privacy',
+    privacyBody: 'We don\'t use tracking cookies. Traffic is measured anonymously and aggregated, never tied to you.',
+    privacyLink: 'Learn more',
+    acknowledge: 'OK',
+  },
+
   about: {
     title: 'About CVeaver',
     subtitle: 'A résumé builder designed to be fast, fair and respectful of your privacy.',
@@ -348,9 +368,36 @@ export const dict: Dict = {
         p: 'Server-side CV drafts expire in 24 hours. Complaints you send us are kept only as long as needed to handle them. We keep no long-term histories or profiles.' },
       { h: 'Changes to this policy',
         p: 'We may update this policy occasionally. The date at the top shows the last revision. Continued use of CVeaver after a change means you accept the version in force.' },
+      { h: 'Sub-processors',
+        p: 'To operate, we rely on a small number of specialised providers, each in a strict category: a payment processor (EU), a transactional email delivery provider (EU), cloud hosting (EU), and cookieless anonymous traffic measurement. We share no more than strictly necessary with any of them for the function they perform, and all are bound by contractual confidentiality and security obligations.' },
       { h: 'Contact',
         p: 'For any privacy question, reach us through the Contact page. We try to reply within a reasonable time.' },
     ],
+    rightsCtaTitle: 'Exercise your rights',
+    rightsCtaBody: 'You have the right to know what data we process about you, request correction or deletion. Since we keep almost nothing, the answer is often "there is nothing to send/delete" — but you can always exercise these rights.',
+    rightsCtaButton: 'Request my data',
+  },
+
+  dataRequest: {
+    title: 'Your data',
+    subtitle: 'How to access, correct or delete the data we process about you.',
+    intro: 'CVeaver is designed to keep the bare minimum: no accounts, no profiles, and server-side drafts expire in 24 hours. Even so, if you want to exercise any of your GDPR rights, this page explains how.',
+    sections: [
+      { h: 'What we process about you',
+        p: 'Almost nothing persistently: the content you write in the CV lives in your browser; the server only receives it for as long as it takes to generate the PDF (drafts are deleted in 24 hours). The email you provide at Stripe Checkout is used once to send you the PDF. No accounts, no profiles, no long-term history.' },
+      { h: 'What you can request',
+        p: 'Access (knowing whether we hold anything about you), correction, deletion or objection to processing. Because so little is retained, the most common answer is "we have nothing to send or delete".' },
+      { h: 'Response time',
+        p: 'We respond in writing within 30 days of your request, as required by GDPR. For unusually complex requests we may extend this by another 60 days, always informing you in writing.' },
+      { h: 'Supervisory authority',
+        p: 'If you feel we have not handled your request correctly, you have the right to lodge a complaint with your national data-protection authority — in Portugal, the CNPD (cnpd.pt).' },
+    ],
+    ctaTitle: 'Send my request',
+    ctaBody: 'Open your email client with a pre-filled request. We respond in writing within the legal 30-day window.',
+    ctaButton: 'Open email',
+    ctaEmailLabel: 'Or write directly to',
+    mailSubject: 'Request about my data (GDPR)',
+    mailBody: 'Hi CVeaver,\n\nI would like to exercise the following right(s) over my data (tick what applies):\n\n[ ] Access (know what data you hold about me)\n[ ] Correction\n[ ] Deletion\n[ ] Other: _____\n\nAdditional details (optional):\n\nThanks.',
   },
 
   toast: {

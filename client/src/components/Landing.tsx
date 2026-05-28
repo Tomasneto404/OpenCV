@@ -306,6 +306,7 @@ export function Landing({ onNew, onLoadConfig, onSample, onNavigate }: Props) {
               <FooterCol title={t('landing.footerNav.legal.title')}>
                 <FooterLink onClick={() => onNavigate('/terms')}>{t('landing.nav.terms')}</FooterLink>
                 <FooterLink onClick={() => onNavigate('/privacy')}>{t('landing.footerNav.legal.privacy')}</FooterLink>
+                <FooterLink onClick={() => onNavigate('/data-request')}>{t('landing.footerNav.legal.dataRequest')}</FooterLink>
               </FooterCol>
             </div>
           </div>

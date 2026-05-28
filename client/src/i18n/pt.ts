@@ -114,6 +114,7 @@ export const dict = {
       legal: {
         title: 'Legal',
         privacy: 'Privacidade',
+        dataRequest: 'Os meus dados',
         comingSoon: 'Em breve',
       },
       company: {
@@ -326,6 +327,24 @@ export const dict = {
     ],
   },
 
+  consent: {
+    title: 'Antes de pagar',
+    intro: 'Antes de seguires para o pagamento precisamos da tua confirmação em dois pontos. Demora 2 segundos.',
+    termsPrefix: 'Li e aceito os',
+    termsLabel: 'Termos',
+    and: 'e a',
+    privacyLabel: 'Política de Privacidade',
+    age: 'Confirmo que tenho pelo menos {age} anos.',
+    continue: 'Continuar para pagamento',
+  },
+
+  notice: {
+    privacyTitle: 'Privacidade',
+    privacyBody: 'Não usamos cookies de rastreio. Medimos uso de forma agregada e anónima, sem te identificar.',
+    privacyLink: 'Saber mais',
+    acknowledge: 'OK',
+  },
+
   about: {
     title: 'Sobre o CVeaver',
     subtitle: 'Um gerador de currículos pensado para ser rápido, justo e respeitador da tua privacidade.',
@@ -391,9 +410,36 @@ export const dict = {
         p: 'Os rascunhos de CV no servidor expiram em 24 horas. As reclamações que nos envias são guardadas apenas o tempo necessário para as tratar. Não mantemos históricos nem perfis de longo prazo.' },
       { h: 'Alterações a esta política',
         p: 'Podemos atualizar esta política pontualmente. A data no topo indica a última revisão. O uso continuado do CVeaver após uma alteração implica reconhecimento da versão em vigor.' },
+      { h: 'Sub-processadores',
+        p: 'Para que o serviço funcione, recorremos a um número reduzido de prestadores especializados, cada um numa categoria estrita: um processador de pagamentos (UE), um fornecedor de entrega de email transaccional (UE), alojamento na nuvem (UE) e medição de tráfego anónima sem cookies. Não partilhamos dados teus com nenhum destes para além do estritamente necessário à função que prestam, e todos estão sujeitos a obrigações contratuais de confidencialidade e segurança.' },
       { h: 'Contacto',
         p: 'Para qualquer questão sobre privacidade, fala connosco através da página de Contactos. Tentamos responder em prazo razoável.' },
     ],
+    rightsCtaTitle: 'Exercer os teus direitos',
+    rightsCtaBody: 'Tens direito a saber que dados tratamos sobre ti, pedir a correcção ou a eliminação dos mesmos. Como praticamente não guardamos nada, na maioria dos casos não há quase nada a fazer — mas podes sempre exercer estes direitos.',
+    rightsCtaButton: 'Pedir os meus dados',
+  },
+
+  dataRequest: {
+    title: 'Os teus dados',
+    subtitle: 'Como aceder, corrigir ou eliminar os dados que tratamos sobre ti.',
+    intro: 'O CVeaver foi desenhado para guardar o mínimo possível: não há contas, não há perfis, e os rascunhos no servidor expiram em 24 horas. Mesmo assim, se quiseres exercer algum dos teus direitos ao abrigo do RGPD, esta página explica como.',
+    sections: [
+      { h: 'O que tratamos sobre ti',
+        p: 'Praticamente nada de forma persistente: o conteúdo que escreves no CV vive no teu browser; o servidor só recebe esses dados pelo tempo necessário para gerar o PDF (rascunhos eliminados em 24 horas). O email indicado no Stripe Checkout é usado uma vez para te enviarmos o PDF. Não temos contas, perfis nem histórico de longo prazo.' },
+      { h: 'O que podes pedir',
+        p: 'Acesso (saber se temos algo sobre ti), correcção, eliminação, ou oposição ao tratamento. Como há tão pouca informação retida, a resposta mais comum é "não temos nada para te enviar/apagar".' },
+      { h: 'Prazo de resposta',
+        p: 'Respondemos por escrito até 30 dias após o teu pedido, como exige o RGPD. Se o pedido for invulgarmente complexo, podemos prolongar este prazo por mais 60 dias, informando-te sempre por escrito.' },
+      { h: 'Autoridade de controlo',
+        p: 'Se considerares que não atendemos correctamente o teu pedido, tens o direito de apresentar reclamação à autoridade nacional de protecção de dados — em Portugal, a CNPD (cnpd.pt).' },
+    ],
+    ctaTitle: 'Enviar o meu pedido',
+    ctaBody: 'Abre o teu cliente de email com o pedido pré-preenchido. Respondemos por escrito no prazo legal de 30 dias.',
+    ctaButton: 'Abrir email',
+    ctaEmailLabel: 'Ou escreve directamente para',
+    mailSubject: 'Pedido relativo aos meus dados (RGPD)',
+    mailBody: 'Olá CVeaver,\n\nPretendo exercer o(s) seguinte(s) direito(s) sobre os meus dados (assinala o que se aplica):\n\n[ ] Acesso (saber que dados têm sobre mim)\n[ ] Correcção\n[ ] Eliminação\n[ ] Outro: _____\n\nDetalhes adicionais (opcional):\n\nObrigado.',
   },
 
   toast: {

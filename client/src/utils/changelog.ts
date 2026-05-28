@@ -22,6 +22,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-05-28',
+    title: 'Privacy & consent improvements',
+    items: [
+      'New "My data" page with a one-click request for access, correction or deletion.',
+      'Discreet privacy notice on first visit — no cookies to accept, just a quick heads-up.',
+      'Clear consent step before paying: you confirm the Terms, Privacy Policy and minimum age.',
+      'Privacy Policy expanded with the categories of providers we rely on.',
+    ],
+  },
+  {
     date: '2026-05-25',
     title: 'About & Contact pages',
     items: [

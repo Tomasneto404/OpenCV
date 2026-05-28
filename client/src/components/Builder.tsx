@@ -34,6 +34,8 @@ import { BetaBadge } from './BetaBadge';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
 import { BYPASS_PAYMENT_FOR_TESTING, BETA_PAYMENTS } from '../App';
+import { ConsentModal } from './ConsentModal';
+import { readCheckoutConsent } from '../utils/legal';
 
 interface Props {
   cv: CVData;
@@ -51,6 +53,8 @@ interface Props {
   canRedo: boolean;
   saving: boolean;
   onLoadSample: () => void;
+  /** Used by the ConsentModal links (Terms / Privacy). */
+  onNavigate: (path: string) => void;
 }
 
 const SECTION_KEYS: SectionKey[] = [
@@ -61,14 +65,23 @@ const SECTION_KEYS: SectionKey[] = [
 export function Builder({
   cv, mode, meta, onChange, onBack, onPay, paying,
   onUndo, onRedo, onClear, canUndo, canRedo,
-  saving, onLoadSample,
+  saving, onLoadSample, onNavigate,
 }: Props) {
   const [active, setActive] = useState<SectionKey>('personal');
   const [previewOpen, setPreviewOpen] = useState(false);
   /** Zoom that fits the A4 page (794px) to the phone width inside the preview
    *  modal, so it never overflows the screen. Recomputed on open + resize. */
   const [previewZoom, setPreviewZoom] = useState<number | undefined>(undefined);
+  /** ConsentModal visibility — opened on first Pay click without stored consent. */
+  const [consentOpen, setConsentOpen] = useState(false);
   const { t, locale } = useT();
+
+  /** Pay button entry point: short-circuit through ConsentModal on first time. */
+  const handlePayClick = () => {
+    if (BETA_PAYMENTS) { onPay(); return; }
+    if (readCheckoutConsent()) { onPay(); return; }
+    setConsentOpen(true);
+  };
 
   useKeyboardShortcuts({ onUndo, onRedo });
 
@@ -154,7 +167,7 @@ export function Builder({
           <div className="hidden lg:block">
             <button
               className="btn-primary text-sm whitespace-nowrap"
-              onClick={onPay}
+              onClick={handlePayClick}
               disabled={BETA_PAYMENTS || paying || !isPayable}
               title={BETA_PAYMENTS ? t('beta.badgeTitle') : (isPayable ? '' : t('builder.actions.nameRequired'))}
             >{payLabel}</button>
@@ -260,11 +273,18 @@ export function Builder({
           </button>
           <button
             className="btn-primary flex-[1.5] text-sm whitespace-nowrap"
-            onClick={onPay}
+            onClick={handlePayClick}
             disabled={BETA_PAYMENTS || paying || !isPayable}
             title={BETA_PAYMENTS ? t('beta.badgeTitle') : (isPayable ? '' : t('builder.actions.nameRequired'))}
           >{payLabel}</button>
         </div>
+
+        <ConsentModal
+          open={consentOpen}
+          onCancel={() => setConsentOpen(false)}
+          onConfirm={() => { setConsentOpen(false); onPay(); }}
+          onNavigate={onNavigate}
+        />
 
         {previewOpen && (
           <div className="lg:hidden fixed inset-0 z-30 bg-black/80 backdrop-blur-sm flex flex-col">

@@ -63,6 +63,7 @@ export const dict: Dict = {
       legal: {
         title: 'Légal',
         privacy: 'Confidentialité',
+        dataRequest: 'Mes données',
         comingSoon: 'Bientôt',
       },
       company: {
@@ -217,6 +218,25 @@ export const dict: Dict = {
         p: 'Pour toute question ou demande liée au service, utilisez la page /support. Nous essayons de répondre dans un délai raisonnable mais ne garantissons aucun délai spécifique.' },
     ],
   },
+
+  consent: {
+    title: 'Avant de payer',
+    intro: 'Avant de passer au paiement, nous avons besoin de ta confirmation sur deux points. Ça prend deux secondes.',
+    termsPrefix: 'J\'ai lu et j\'accepte les',
+    termsLabel: 'Conditions',
+    and: 'et la',
+    privacyLabel: 'Politique de Confidentialité',
+    age: 'Je confirme avoir au moins {age} ans.',
+    continue: 'Continuer vers le paiement',
+  },
+
+  notice: {
+    privacyTitle: 'Confidentialité',
+    privacyBody: 'Nous n\'utilisons pas de cookies de suivi. La fréquentation est mesurée de façon anonyme et agrégée, sans t\'identifier.',
+    privacyLink: 'En savoir plus',
+    acknowledge: 'OK',
+  },
+
   about: {
     title: 'À propos de CVeaver',
     subtitle: 'Un générateur de CV conçu pour être rapide, juste et respectueux de ta vie privée.',
@@ -282,9 +302,36 @@ export const dict: Dict = {
         p: 'Les brouillons de CV côté serveur expirent au bout de 24 heures. Les réclamations que tu nous envoies ne sont conservées que le temps nécessaire à leur traitement. Nous ne gardons aucun historique ni profil à long terme.' },
       { h: 'Modifications de cette politique',
         p: 'Nous pouvons mettre à jour cette politique ponctuellement. La date en haut indique la dernière révision. L’usage continu de CVeaver après une modification vaut acceptation de la version en vigueur.' },
+      { h: 'Sous-traitants',
+        p: 'Pour fonctionner, nous faisons appel à un petit nombre de prestataires spécialisés, chacun dans une catégorie stricte : un processeur de paiement (UE), un fournisseur d’envoi d’email transactionnel (UE), un hébergement cloud (UE) et une mesure de trafic anonyme sans cookies. Nous ne partageons avec aucun d\'entre eux plus que ce qui est strictement nécessaire à leur fonction, et tous sont tenus par des obligations contractuelles de confidentialité et de sécurité.' },
       { h: 'Contact',
         p: 'Pour toute question de confidentialité, écris-nous via la page Contact. Nous essayons de répondre dans un délai raisonnable.' },
     ],
+    rightsCtaTitle: 'Exercer tes droits',
+    rightsCtaBody: 'Tu as le droit de savoir quelles données nous traitons à ton sujet, de demander leur rectification ou leur suppression. Comme nous ne conservons presque rien, la réponse est souvent "il n\'y a rien à envoyer/supprimer" — mais tu peux toujours exercer ces droits.',
+    rightsCtaButton: 'Demander mes données',
+  },
+
+  dataRequest: {
+    title: 'Tes données',
+    subtitle: 'Comment accéder, corriger ou supprimer les données que nous traitons à ton sujet.',
+    intro: 'CVeaver est conçu pour conserver le strict minimum : pas de comptes, pas de profils, et les brouillons côté serveur expirent au bout de 24 heures. Si tu souhaites néanmoins exercer l\'un de tes droits au titre du RGPD, cette page explique comment.',
+    sections: [
+      { h: 'Ce que nous traitons à ton sujet',
+        p: 'Presque rien de manière persistante : le contenu que tu écris dans le CV reste dans ton navigateur ; le serveur ne le reçoit que le temps nécessaire à la génération du PDF (brouillons supprimés sous 24 heures). L\'email indiqué au Stripe Checkout sert une seule fois à t\'envoyer le PDF. Pas de comptes, pas de profils, pas d\'historique de long terme.' },
+      { h: 'Ce que tu peux demander',
+        p: 'Accès (savoir si nous détenons quoi que ce soit), rectification, suppression ou opposition au traitement. Comme nous retenons si peu, la réponse la plus fréquente est "nous n\'avons rien à t\'envoyer/supprimer".' },
+      { h: 'Délai de réponse',
+        p: 'Nous répondons par écrit dans les 30 jours suivant ta demande, comme l\'exige le RGPD. Pour des demandes particulièrement complexes, nous pouvons prolonger ce délai de 60 jours supplémentaires, toujours en t\'informant par écrit.' },
+      { h: 'Autorité de contrôle',
+        p: 'Si tu estimes que ta demande n\'a pas été correctement traitée, tu as le droit d\'introduire une réclamation auprès de l\'autorité nationale de protection des données — en France, la CNIL (cnil.fr) ; au Portugal, la CNPD (cnpd.pt).' },
+    ],
+    ctaTitle: 'Envoyer ma demande',
+    ctaBody: 'Ouvre ton client email avec la demande pré-remplie. Nous répondons par écrit dans le délai légal de 30 jours.',
+    ctaButton: 'Ouvrir l\'email',
+    ctaEmailLabel: 'Ou écris directement à',
+    mailSubject: 'Demande concernant mes données (RGPD)',
+    mailBody: 'Bonjour CVeaver,\n\nJe souhaite exercer le(s) droit(s) suivant(s) sur mes données (cocher ce qui s\'applique) :\n\n[ ] Accès (savoir quelles données vous détenez sur moi)\n[ ] Rectification\n[ ] Suppression\n[ ] Autre : _____\n\nDétails supplémentaires (facultatif) :\n\nMerci.',
   },
 
   toast: {

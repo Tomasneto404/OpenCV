@@ -19,7 +19,7 @@ ENV VITE_UMAMI_SRC=$VITE_UMAMI_SRC
 RUN npm run build
 
 # ── Runtime: nginx ─────────────────────────────────────────────────────
-FROM nginx:1.27-alpine AS runner
+FROM nginx:1.31-alpine AS runner
 RUN apk add --no-cache wget tini && \
     addgroup -g 1001 -S app && \
     adduser  -u 1001 -S app -G app && \

@@ -57,6 +57,8 @@ jobs:
           build-args: |
             VITE_API_URL=https://api.cveaver.com
             VITE_STRIPE_PUBLISHABLE_KEY=${{ vars.VITE_STRIPE_PUBLISHABLE_KEY }}
+            VITE_UMAMI_WEBSITE_ID=${{ vars.VITE_UMAMI_WEBSITE_ID }}
+            VITE_UMAMI_SRC=${{ vars.VITE_UMAMI_SRC }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER }}/cveaver-client:latest
             ${{ env.REGISTRY }}/${{ env.OWNER }}/cveaver-client:${{ github.sha }}

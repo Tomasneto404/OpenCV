@@ -6,8 +6,10 @@ import { ToastProvider } from './components/Toast';
 import { I18nProvider } from './i18n';
 import { KonamiEgg } from './components/KonamiEgg';
 import { installCaptureGuard } from './utils/captureGuard';
+import { installAnalytics } from './utils/analytics';
 
 installCaptureGuard();
+installAnalytics();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

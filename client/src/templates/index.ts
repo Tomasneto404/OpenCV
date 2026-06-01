@@ -24,6 +24,17 @@ interface TemplateEntry {
   description: string;
   component: ComponentType<{ cv: CVData }>;
   available: boolean;
+  /** Width of the full-bleed coloured sidebar accent in px, measured at the
+   *  template's native 794 px width. The PaginatedCanvas uses this so the
+   *  inter-page safe-area strips paint the accent colour over the sidebar
+   *  region (keeping it full-bleed) and the surface colour over the main
+   *  column. Omit / 0 → no sidebar; strips paint the surface colour edge
+   *  to edge. */
+  sidebarEnd?: number;
+  /** Page background colour, painted full-bleed behind the sliced content
+   *  and used for the inter-page safe-area strips over the main column.
+   *  Defaults to white. */
+  surfaceBg?: string;
 }
 
 export const TEMPLATES: Record<TemplateId, TemplateEntry> = {
@@ -33,6 +44,8 @@ export const TEMPLATES: Record<TemplateId, TemplateEntry> = {
     description: 'Two-column com sidebar colorida.',
     component: ModernTemplate,
     available: true,
+    sidebarEnd: 260,
+    surfaceBg: '#ffffff',
   },
   classic: {
     id: 'classic',
@@ -40,6 +53,7 @@ export const TEMPLATES: Record<TemplateId, TemplateEntry> = {
     description: 'Serif, single-column, ATS-friendly.',
     component: ClassicTemplate,
     available: true,
+    surfaceBg: '#ffffff',
   },
   minimal: {
     id: 'minimal',
@@ -47,6 +61,7 @@ export const TEMPLATES: Record<TemplateId, TemplateEntry> = {
     description: 'Espaço branco, hierarquia leve.',
     component: MinimalTemplate,
     available: true,
+    surfaceBg: '#ffffff',
   },
   creative: {
     id: 'creative',
@@ -54,6 +69,7 @@ export const TEMPLATES: Record<TemplateId, TemplateEntry> = {
     description: 'Header com cor e cartões destacados.',
     component: CreativeTemplate,
     available: true,
+    surfaceBg: '#fafaf7',
   },
   executive: {
     id: 'executive',
@@ -61,6 +77,7 @@ export const TEMPLATES: Record<TemplateId, TemplateEntry> = {
     description: 'Serif premium, double-rule, two-column tail.',
     component: ExecutiveTemplate,
     available: true,
+    surfaceBg: '#ffffff',
   },
   compact: {
     id: 'compact',

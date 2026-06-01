@@ -22,6 +22,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-06-01',
+    title: 'A truer live preview',
+    items: [
+      'The editor now splits your CV into real A4 pages as you type, so the preview matches the final PDF.',
+      'Page breaks land between lines — no more text cut off at a page edge.',
+      'Reorder education and skill groups with the new up/down arrows.',
+      'Attach several certificates at once.',
+    ],
+  },
+  {
     date: '2026-05-28',
     title: 'Privacy & consent improvements',
     items: [

@@ -348,13 +348,17 @@ textarea.field { resize: vertical; min-height: 5.5rem; line-height: 1.55; }
   pointer-events: none;
 }
 
-/* ── CV preview surface — always white regardless of WebUI theme. ───── */
+/* ── CV preview surface — always white regardless of WebUI theme. ─────
+   `--cv-stack-h` is set by the PaginatedCanvas inner wrapper to the full
+   multi-page height; in measure context (or any non-paginated usage) it
+   falls back to `auto` so cv-surface keeps its natural content height.
+   Templates with full-bleed coloured backgrounds (Modern's accent
+   sidebar) read this same variable for their grid so the accent extends
+   to the bottom of every sheet. */
 .cv-surface {
   color: #111827;
   background: white;
-  box-shadow: var(--shadow-elevated);
-  border-radius: 12px;
-  overflow: hidden;
+  min-height: var(--cv-stack-h, auto);
 }
 
 /* CV page wrapper used in <Preview/>. Uses CSS `zoom` (not `transform`)
@@ -368,6 +372,19 @@ textarea.field { resize: vertical; min-height: 5.5rem; line-height: 1.55; }
 @media (max-width: 1023px) { .cv-page { zoom: 0.86; } }
 @media (max-width: 767px)  { .cv-page { zoom: 0.72; } }
 @media (max-width: 479px)  { .cv-page { zoom: 0.55; } }
+
+/* Single A4 sheet inside a paginated stack. The frame clips the sliced
+   template content (overflow:hidden + negative marginTop on the inner
+   div), giving the illusion of separate pages. */
+.cv-page-frame {
+  width: 794px;
+  height: 1123px;
+  position: relative;
+  overflow: hidden;
+  background: white;
+  border-radius: 12px;
+  box-shadow: var(--shadow-elevated);
+}
 
 /* Frame the CV on the Paid screen with a soft elevated card shadow + a
    pencil-thin hairline. The width hugs the CV (shrink-to-fit), so the

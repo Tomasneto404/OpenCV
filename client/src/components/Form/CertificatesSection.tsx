@@ -64,34 +64,49 @@ export function CertificatesSection({ items, onChange }: Props) {
   );
 
   const onPick = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const files = e.target.files ? Array.from(e.target.files) : [];
     if (fileRef.current) fileRef.current.value = '';
-    if (!file) return;
+    if (files.length === 0) return;
 
     setError(null);
     setBusy(true);
-    try {
-      const cert = await processCertificate(file, '', '');
-      if (totalBytes + cert.bytes > CERT_TOTAL_CAP) {
-        setError(t('certificates.errTotalCap'));
-        return;
+
+    /** Process each file in order. Per-file failures collect into
+     *  `failures`; the batch keeps going. We track running total locally
+     *  because `totalBytes` is captured from a stale closure. */
+    let running = totalBytes;
+    const added: CertificateItem[] = [];
+    const failures: string[] = [];
+
+    for (const file of files) {
+      try {
+        const cert = await processCertificate(file, '', '');
+        if (running + cert.bytes > CERT_TOTAL_CAP) {
+          failures.push(`${file.name}: ${t('certificates.errTotalCap')}`);
+          continue;
+        }
+        added.push(cert);
+        running += cert.bytes;
+      } catch (err) {
+        let msg: string;
+        if (err instanceof CertError) {
+          const map: Record<typeof err.code, string> = {
+            'too-large': t('certificates.errTooLarge'),
+            'not-pdf':   t('certificates.errBadPdf'),
+            'encrypted': t('certificates.errEncrypted'),
+            'bad-pdf':   t('certificates.errBadPdf'),
+          };
+          msg = map[err.code];
+        } else {
+          msg = (err as Error).message;
+        }
+        failures.push(`${file.name}: ${msg}`);
       }
-      onChange([...certs, cert]);
-    } catch (err) {
-      if (err instanceof CertError) {
-        const map: Record<typeof err.code, string> = {
-          'too-large': t('certificates.errTooLarge'),
-          'not-pdf':   t('certificates.errBadPdf'),
-          'encrypted': t('certificates.errEncrypted'),
-          'bad-pdf':   t('certificates.errBadPdf'),
-        };
-        setError(map[err.code]);
-      } else {
-        setError((err as Error).message);
-      }
-    } finally {
-      setBusy(false);
     }
+
+    if (added.length > 0) onChange([...certs, ...added]);
+    if (failures.length > 0) setError(failures.join(' · '));
+    setBusy(false);
   };
 
   const removeAt = (id: string) => onChange(certs.filter((c) => c.id !== id));
@@ -124,7 +139,7 @@ export function CertificatesSection({ items, onChange }: Props) {
         )}
       </div>
 
-      <input ref={fileRef} type="file" accept="application/pdf,.pdf" hidden onChange={onPick} />
+      <input ref={fileRef} type="file" accept="application/pdf,.pdf" multiple hidden onChange={onPick} />
       <button
         type="button"
         className="btn-ghost text-sm w-full justify-center"

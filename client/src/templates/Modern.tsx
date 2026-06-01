@@ -56,7 +56,17 @@ export function ModernTemplate({ cv }: Props) {
 
   return (
     <div className="cv-surface" style={rootStyle}>
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', minHeight: 1123 }}>
+      {/* The grid inherits `--cv-stack-h` (set by PaginatedCanvas) so its
+          rows — and therefore the accent sidebar — extend to the bottom of
+          every sheet. Outside of pagination the variable is `auto` and the
+          grid takes its natural content height. */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '260px 1fr',
+          minHeight: 'var(--cv-stack-h, auto)',
+        }}
+      >
         {/* Sidebar */}
         <aside style={{ background: accent, color: C.white, padding: 28, display: 'flex', flexDirection: 'column', gap: 22 }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>

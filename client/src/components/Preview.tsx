@@ -3,11 +3,15 @@
  * after payment.
  *
  * Composition:
- *   1. CV template (HTML/Tailwind, not the PDF renderer)
+ *   1. CV template, paginated across N A4 sheets via <PaginatedCanvas/>.
+ *      The template renders once, intrinsic height is measured in a hidden
+ *      layer, then a stack of A4-shaped frames "slices" that single
+ *      render via overflow:hidden + negative marginTop on each frame.
+ *      The user sees N separate sheets with gaps, matching the eventual
+ *      PDF output.
  *   2. One "framed certificate" preview page per attached certificate.
- *      The frame style follows the selected template (modern/classic/
- *      minimal/creative/executive), mirroring what the server outputs in
- *      the final PDF.
+ *      Each cert is already exactly one A4 page, so they sit beside the
+ *      paginated stack without their own pagination logic.
  *
  * Capture deterrents: no right-click, no text selection, no image drag.
  * Watermark on top while in builder/unpaid mode. None of this is real
@@ -17,15 +21,23 @@
  * (via .cv-page in index.css) so the layout footprint shrinks at smaller
  * viewports — no phantom horizontal scroll.
  */
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { CVData, CertificateItem, TemplateId } from '../types';
 import { TEMPLATES } from '../templates';
 import { dataUrlToBytes } from '../utils/certificate';
 import { renderPdfThumbnail } from '../utils/pdfThumbnail';
 
+/** Match the values in index.css `.cv-page-frame` exactly. */
+const PAGE_W = 794;
+const PAGE_H = 1123;
+/** Top + bottom safe-area inside each A4 frame. Mimics the typical PDF
+ *  page margin (~6 mm @ 96 dpi) — text never crashes into the sheet edge. */
+const SAFE = 28;
+/** Visual gap between stacked A4 sheets, in px (pre-zoom). */
+const PAGE_GAP = 24;
+
 interface Props {
   cv: CVData;
-  refId?: string;
   paid?: boolean;
   /** Overrides the responsive CSS `zoom` on each page (inline beats the
    *  stylesheet). Used by the mobile preview modal to fit the page to the
@@ -33,39 +45,238 @@ interface Props {
   zoom?: number;
 }
 
-export function Preview({ cv, refId = 'cv-print-root', paid = false, zoom }: Props) {
-  const Template = TEMPLATES[cv.template]?.component ?? TEMPLATES.modern.component;
+export function Preview({ cv, paid = false, zoom }: Props) {
+  const entry = TEMPLATES[cv.template] ?? TEMPLATES.modern;
+  const Template = entry.component;
   const certs = cv.certificates ?? [];
-  const zoomStyle = zoom != null ? { zoom } : undefined;
 
   return (
     <div className="flex flex-col items-center gap-6">
-      <div
-        className="relative inline-block"
-        onContextMenu={(e) => e.preventDefault()}
-        onDragStart={(e) => e.preventDefault()}
-        style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+      <PaginatedCanvas
+        paid={paid}
+        zoom={zoom}
+        sidebarEnd={entry.sidebarEnd ?? 0}
+        surfaceBg={entry.surfaceBg ?? '#ffffff'}
+        accent={cv.accentColor || '#6366f1'}
       >
-        <div id={refId} className="cv-page" style={zoomStyle}>
-          <Template cv={cv} />
-        </div>
-        {!paid && <WatermarkOverlay />}
+        <Template cv={cv} />
+      </PaginatedCanvas>
+
+      {certs.length > 0 && certs.map((c) => (
+        <CertificatePagePreview
+          key={c.id}
+          cert={c}
+          template={cv.template}
+          accent={cv.accentColor || '#98641f'}
+          paid={paid}
+          zoom={zoom}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Collects the vertical extent of every visual text line + replaced element
+ * (img/svg) inside `root`, in coordinates relative to root's top. Using
+ * Range.getClientRects() yields one rect per WRAPPED LINE, so the paginator
+ * can break between lines of a paragraph without ever cutting through one.
+ * Overlapping rects (e.g. a sidebar line and a main-column line at the same
+ * y) are merged into occupied intervals.
+ */
+function measureOccupied(root: HTMLElement): { contentH: number; intervals: [number, number][] } {
+  const originTop = root.getBoundingClientRect().top;
+  const rects: [number, number][] = [];
+
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) =>
+      node.textContent && node.textContent.trim().length > 0
+        ? NodeFilter.FILTER_ACCEPT
+        : NodeFilter.FILTER_REJECT,
+  });
+  const range = document.createRange();
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    range.selectNodeContents(node);
+    const list = range.getClientRects();
+    for (let i = 0; i < list.length; i++) {
+      const r = list[i];
+      if (r.height > 0) rects.push([r.top - originTop, r.bottom - originTop]);
+    }
+  }
+  // Replaced / atomic elements that carry no text node but must not split.
+  root.querySelectorAll('img, svg').forEach((el) => {
+    const r = el.getBoundingClientRect();
+    if (r.height > 0) rects.push([r.top - originTop, r.bottom - originTop]);
+  });
+
+  rects.sort((a, b) => a[0] - b[0]);
+  const merged: [number, number][] = [];
+  for (const [t, b] of rects) {
+    const last = merged[merged.length - 1];
+    if (last && t <= last[1] + 1) last[1] = Math.max(last[1], b);
+    else merged.push([t, b]);
+  }
+  return { contentH: root.scrollHeight, intervals: merged };
+}
+
+/**
+ * Greedy page breaks. Each break lands in a gap between occupied intervals
+ * so no line is ever cut. Page 0 has only a bottom margin (its top keeps the
+ * template's natural padding); subsequent pages have top + bottom margins.
+ * A block taller than a full page is the only case that forces a hard cut.
+ *
+ * Returns boundary offsets [0, b1, b2, …, contentH]; page i spans
+ * [breaks[i], breaks[i+1]].
+ */
+function computeBreaks(contentH: number, intervals: [number, number][]): number[] {
+  const firstCap = PAGE_H - SAFE;
+  const restCap = PAGE_H - 2 * SAFE;
+  const breaks = [0];
+
+  for (let guard = 0; guard < 60; guard++) {
+    const start = breaks[breaks.length - 1];
+    const cap = breaks.length === 1 ? firstCap : restCap;
+    const maxY = start + cap;
+    if (maxY >= contentH) break; // remaining content fits on this last page
+
+    let y = maxY;
+    // If maxY falls strictly inside a line/element, break before it.
+    const straddle = intervals.find((iv) => iv[0] < maxY && maxY < iv[1]);
+    if (straddle) y = straddle[0] > start ? straddle[0] : maxY; // else: too tall → hard cut
+    if (y <= start) y = maxY; // guarantee forward progress
+    breaks.push(y);
+  }
+  breaks.push(contentH);
+  return breaks;
+}
+
+/**
+ * Wraps `children` in stacked A4 frames. Page breaks are computed from the
+ * measured line positions (see computeBreaks), so a line is never split
+ * across a page boundary. Each frame slices the single rendered content via
+ * a negative marginTop; safe-area strips hide the neighbouring page's bleed
+ * into the margins and are painted in the page colours (surface + sidebar
+ * accent) so full-bleed templates stay edge-to-edge and off-white surfaces
+ * don't flash white bands.
+ *
+ * Sidebar extension: the inner wrapper publishes `--cv-stack-h` so the
+ * template's full-bleed background (cv-surface, Modern's grid) fills the
+ * entire multi-page span; the accent then reaches the bottom of every sheet.
+ */
+function PaginatedCanvas({
+  children, paid, zoom, sidebarEnd = 0, surfaceBg = '#ffffff', accent = '#6366f1',
+}: {
+  children: ReactNode;
+  paid?: boolean;
+  zoom?: number;
+  sidebarEnd?: number;
+  surfaceBg?: string;
+  accent?: string;
+}) {
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [breaks, setBreaks] = useState<number[]>([0, PAGE_H]);
+
+  useLayoutEffect(() => {
+    const el = measureRef.current;
+    if (!el) return;
+
+    const recompute = () => {
+      const { contentH, intervals } = measureOccupied(el);
+      const next = computeBreaks(contentH, intervals);
+      setBreaks((prev) =>
+        prev.length === next.length && prev.every((v, i) => Math.abs(v - next[i]) < 0.5)
+          ? prev
+          : next,
+      );
+    };
+
+    recompute();
+    const obs = new ResizeObserver(recompute);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [children]);
+
+  const zoomStyle: CSSProperties | undefined = zoom != null ? { zoom } : undefined;
+  const pageCount = Math.max(1, breaks.length - 1);
+  /** Tall enough that the full-bleed background covers every frame fully. */
+  const stackH = pageCount * PAGE_H;
+
+  /** Bottom-of-content / top-of-frame margin strip. `top`/`height` in px. */
+  const Strip = ({ top, height }: { top: number; height: number }) =>
+    height <= 0 ? null : (
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute', left: 0, right: 0, top, height,
+          display: 'flex', zIndex: 1, pointerEvents: 'none',
+        }}
+      >
+        {sidebarEnd > 0 && <div style={{ width: sidebarEnd, background: accent }} />}
+        <div style={{ flex: 1, background: surfaceBg }} />
+      </div>
+    );
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {/* Hidden measurement layer — same 794 px width as a real frame, but
+          OUTSIDE the zoomed .cv-page so CSS `zoom` never scales the measured
+          line rects (getClientRects is zoom-sensitive, scrollHeight is not —
+          measuring here keeps both in the same unscaled coordinate space).
+          No `--cv-stack-h`, so cv-surface keeps its natural content height. */}
+      <div
+        ref={measureRef}
+        aria-hidden="true"
+        style={{
+          width: PAGE_W,
+          position: 'absolute',
+          left: -99999,
+          top: 0,
+          visibility: 'hidden',
+          pointerEvents: 'none',
+        }}
+      >
+        {children}
       </div>
 
-      {certs.length > 0 && (
-        <div className="flex flex-col items-center gap-6">
-          {certs.map((c) => (
-            <CertificatePagePreview
-              key={c.id}
-              cert={c}
-              template={cv.template}
-              accent={cv.accentColor || '#98641f'}
-              paid={paid}
-              zoom={zoom}
-            />
-          ))}
-        </div>
-      )}
+      <div className="cv-page flex flex-col items-center" style={{ ...zoomStyle, gap: PAGE_GAP }}>
+        {Array.from({ length: pageCount }, (_, i) => {
+          const start = breaks[i];
+          const end = breaks[i + 1] ?? start + PAGE_H;
+          const topMargin = i === 0 ? 0 : SAFE;
+          const contentShown = end - start;
+          const contentBottom = topMargin + contentShown;
+          return (
+            <div
+              key={i}
+              className="cv-page-frame"
+              onContextMenu={(e) => e.preventDefault()}
+              onDragStart={(e) => e.preventDefault()}
+              style={{ background: surfaceBg, userSelect: 'none', WebkitUserSelect: 'none' }}
+            >
+              {/* Inner wrapper: positions the slice and publishes --cv-stack-h
+                  so the template's full-bleed background fills the whole stack. */}
+              <div
+                style={{
+                  marginTop: topMargin - start,
+                  ['--cv-stack-h' as string]: `${stackH}px`,
+                } as CSSProperties}
+              >
+                {children}
+              </div>
+              {/* Top safe area — only on inner pages (page 0 keeps its
+                  natural top). Hides the previous page's bleed. */}
+              {i > 0 && <Strip top={0} height={SAFE} />}
+              {/* Bottom safe area — from where this page's content ends to
+                  the frame bottom. Hides the next page's bleed and renders
+                  the page's trailing whitespace (sidebar accent + surface).
+                  Skipped on the last page (content simply ends there). */}
+              {i < pageCount - 1 && <Strip top={contentBottom} height={PAGE_H - contentBottom} />}
+              {!paid && <WatermarkOverlay />}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -95,28 +306,20 @@ function CertificatePagePreview({
 
   return (
     <div
-      className="cv-page relative inline-block"
-      onContextMenu={(e) => e.preventDefault()}
-      onDragStart={(e) => e.preventDefault()}
-      style={{ userSelect: 'none', WebkitUserSelect: 'none', ...(zoom != null ? { zoom } : {}) }}
+      className="cv-page"
+      style={zoom != null ? { zoom } : undefined}
     >
       <div
-        style={{
-          width: 794,
-          height: 1123,
-          background: 'white',
-          color: '#1a1410',
-          boxShadow: 'var(--shadow-elevated)',
-          borderRadius: 12,
-          overflow: 'hidden',
-          position: 'relative',
-        }}
+        className="cv-page-frame"
+        onContextMenu={(e) => e.preventDefault()}
+        onDragStart={(e) => e.preventDefault()}
+        style={{ color: '#1a1410', userSelect: 'none', WebkitUserSelect: 'none' }}
       >
         {!framed
           ? <BareFrame thumb={thumb} busy={busy} />
           : <TemplateFrame template={template} cert={cert} accent={accent} thumb={thumb} busy={busy} />}
+        {!paid && <WatermarkOverlay />}
       </div>
-      {!paid && <WatermarkOverlay />}
     </div>
   );
 }
@@ -359,6 +562,7 @@ function WatermarkOverlay() {
   return (
     <svg
       className="absolute inset-0 w-full h-full pointer-events-none select-none"
+      style={{ zIndex: 2 }}
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >

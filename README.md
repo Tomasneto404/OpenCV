@@ -1,5 +1,7 @@
 # OpenCV
 
+Repositório: [Tomasneto404/OpenCV](https://github.com/Tomasneto404/OpenCV).
+
 Um editor de currículos gratuito, sem conta, com preview em tempo real e exportação em PDF. Este projeto é um construtor de CVs; não está associado à biblioteca de visão computacional com o mesmo nome.
 
 ## Executar em desenvolvimento
@@ -54,7 +56,7 @@ Os testes incluem PDFs extensos, alteração de nome após reimportação, compa
 
 Os testes de browser iniciam os servidores de desenvolvimento quando necessário. Para testar uma instalação já ativa, usa `E2E_BASE_URL=http://localhost:8080 npm run test:e2e`. Cobrem upload JSON/PDF, ficheiros inválidos, substituição/cancelamento, persistência, reset/desfazer, scroll de CVs extensos e créditos Konami.
 
-A CI executa os testes de browser contra a stack Docker real. Só publica imagens no GHCR depois de passarem o build, TypeScript, testes e verificação de segredos.
+A CI executa os testes de browser contra a stack Docker real. Só publica imagens no Docker Hub (`tomasneto26`) depois de passarem o build, TypeScript, testes e verificação de segredos.
 
 ## API
 

@@ -3,10 +3,13 @@ name: Release images
 # Invoked only after CI passes. Never publish an untested push independently.
 on:
   workflow_call:
+    secrets:
+      DOCKERHUB_TOKEN:
+        description: Docker Hub access token for tomasneto26 with Read and Write permissions
+        required: true
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   images:
@@ -19,19 +22,20 @@ jobs:
         service: [client, server]
     steps:
       - uses: actions/checkout@v4
-      - name: Image name
-        id: image
+      - name: Check Docker Hub credentials
         env:
-          OWNER: ${{ github.repository_owner }}
-          SERVICE: ${{ matrix.service }}
-        run: echo "name=ghcr.io/${OWNER,,}/opencv-${SERVICE}" >> "$GITHUB_OUTPUT"
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -z "$DOCKERHUB_TOKEN" ]; then
+            echo "::error::Add the DOCKERHUB_TOKEN repository secret for Docker Hub user tomasneto26."
+            exit 1
+          fi
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: tomasneto26
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -39,8 +43,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ steps.image.outputs.name }}:latest
-            ${{ steps.image.outputs.name }}:${{ github.sha }}
+            tomasneto26/opencv-${{ matrix.service }}:latest
+            tomasneto26/opencv-${{ matrix.service }}:${{ github.sha }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}

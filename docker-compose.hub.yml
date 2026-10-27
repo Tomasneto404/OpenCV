@@ -2,7 +2,7 @@
 name: opencv
 services:
   server:
-    image: ghcr.io/${GHCR_OWNER:-tomasneto404}/opencv-server:${IMAGE_TAG:-latest}
+    image: ${DOCKERHUB_USER:-tomasneto26}/opencv-server:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -16,7 +16,7 @@ services:
     expose:
       - '3001'
   client:
-    image: ghcr.io/${GHCR_OWNER:-tomasneto404}/opencv-client:${IMAGE_TAG:-latest}
+    image: ${DOCKERHUB_USER:-tomasneto26}/opencv-client:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
       - '${WEB_PORT:-8080}:8080'

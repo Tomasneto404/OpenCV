@@ -32,24 +32,33 @@ curl http://localhost:8080/api/health
 
 Os builds usam o contexto da raiz do repositório porque cliente e servidor partilham os tipos e a validação em `shared/`.
 
-## Imagens publicadas no GitHub
+## Imagens publicadas no Docker Hub
 
-Em cada push para `main` (ou execução manual da CI nessa branch), o GitHub Actions valida o código, executa os testes unitários e testa os browsers desktop/mobile contra Docker. Só depois publica ambas as imagens no GitHub Container Registry, para `linux/amd64` e `linux/arm64`:
+Em cada push para `main` (ou execução manual da CI nessa branch), o GitHub Actions valida o código, executa os testes unitários e testa os browsers desktop/mobile contra Docker. Só depois publica ambas as imagens no Docker Hub, para `linux/amd64` e `linux/arm64`:
 
-- `ghcr.io/tomasneto404/opencv-client:latest`
-- `ghcr.io/tomasneto404/opencv-server:latest`
+- `tomasneto26/opencv-client:latest`
+- `tomasneto26/opencv-server:latest`
 
-Cada imagem recebe também uma tag com o SHA completo do commit. Para uma versão fixa e consistente entre os dois serviços, define `IMAGE_TAG` com esse SHA. O workflow usa `GITHUB_TOKEN` com `packages: write`, sem precisar de um PAT guardado nos secrets. O namespace é obtido automaticamente do proprietário do repositório.
+Cada imagem recebe também uma tag com o SHA completo do commit. Para uma versão fixa e consistente entre os dois serviços, define `IMAGE_TAG` com esse SHA. O workflow publica na conta Docker Hub `tomasneto26`, que é independente do utilizador GitHub `Tomasneto404`.
+
+### Configuração inicial
+
+1. Na conta Docker Hub `tomasneto26`, cria um access token com permissões **Read & Write** em [Account settings → Personal access tokens](https://app.docker.com/settings/personal-access-tokens).
+2. No repositório [Tomasneto404/OpenCV → Settings → Secrets and variables → Actions](https://github.com/Tomasneto404/OpenCV/settings/secrets/actions), guarda-o como **`DOCKERHUB_TOKEN`**.
+3. Cria os repositórios públicos `tomasneto26/opencv-client` e `tomasneto26/opencv-server` no Docker Hub.
+4. Executa novamente a CI em `main` para publicar a primeira versão. O workflow verifica a credencial antes de tentar publicar; os testes não precisam deste secret.
+
+O token fica apenas nos secrets do GitHub. O nome de utilizador está definido no workflow. As tags `latest` e SHA são publicadas nas duas arquiteturas.
 
 Para executar as imagens publicadas, sem construir no servidor:
 
 ```sh
-docker compose -f docker-compose.ghcr.yml config -q
-docker compose -f docker-compose.ghcr.yml pull
-docker compose -f docker-compose.ghcr.yml up -d --wait
+docker compose -f docker-compose.hub.yml config -q
+docker compose -f docker-compose.hub.yml pull
+docker compose -f docker-compose.hub.yml up -d --wait
 ```
 
-Se os packages estiverem privados, autentica o host no GHCR com um token que tenha `read:packages`, usando `docker login ghcr.io --username Tomasneto404 --password-stdin`. Alternativamente, torna os dois packages públicos nas definições do GitHub. Não coloques tokens no compose nem no repositório.
+Se optares por imagens privadas, autentica o host com um token de leitura usando `docker login --username tomasneto26 --password-stdin`. Imagens públicas não precisam de autenticação para o pull.
 
 Ambos os ficheiros compose usam o mesmo nome de projeto e volume de chaves. Usa apenas um deles de cada vez para a mesma instalação. Numa migração, preserva as chaves antes de substituir os serviços.
 

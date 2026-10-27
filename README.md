@@ -1,91 +1,169 @@
 # OpenCV
 
-Repositório: [Tomasneto404/OpenCV](https://github.com/Tomasneto404/OpenCV).
+A free CV builder with a live preview, nine templates, and editable PDF exports. No account, paywall, or watermark.
 
-Um editor de currículos gratuito, sem conta, com preview em tempo real e exportação em PDF. Este projeto é um construtor de CVs; não está associado à biblioteca de visão computacional com o mesmo nome.
+Build a CV from scratch, explore an example, or upload an existing OpenCV PDF or JSON file to keep editing. Run the entire application in a single Docker container.
 
-## Executar em desenvolvimento
+[GitHub repository](https://github.com/Tomasneto404/OpenCV) · [Docker Hub](https://hub.docker.com/r/tomasneto26/opencv) · [Deployment guide](DEPLOY.md)
 
-Requer Node.js 22.12+ e npm.
+> This project is a CV builder and is not affiliated with the OpenCV computer vision library.
+
+## Screenshots
+
+### Landing page
+
+Choose a template, start a new CV, or upload an existing one.
+
+![OpenCV landing page in English, with create and upload actions](docs/screenshots/landing.png)
+
+### Editor and live preview
+
+Edit each section, change the design, and preview your CV alongside the form.
+
+![OpenCV desktop editor showing a sample CV and its live preview](docs/screenshots/editor.png)
+
+<details>
+<summary>Dark mode and mobile preview</summary>
+
+### Dark mode
+
+![OpenCV desktop editor in dark mode](docs/screenshots/editor-dark.png)
+
+### Mobile preview
+
+<p align="center">
+  <img src="docs/screenshots/mobile-preview.png" alt="OpenCV mobile preview displaying the sample CV" width="320" />
+</p>
+
+</details>
+
+Screenshots show the running application in English using the built-in sample CV.
+
+## Quick start with Docker
+
+Download [compose.yaml](compose.yaml) into a directory on your server, then run:
+
+```sh
+docker compose up -d --wait
+```
+
+Open **http://localhost:8080**.
+
+The compose file pulls `tomasneto26/opencv:latest` from Docker Hub. One Node.js container serves both the interface and the API. No database, keys, or persistent volumes are required.
+
+To use the current version explicitly:
+
+```sh
+IMAGE_TAG=0.1.0 docker compose up -d --wait
+```
+
+Set `WEB_PORT` to change the published port. For example:
+
+```sh
+WEB_PORT=80 docker compose up -d --wait
+```
+
+To build the image from your local checkout:
+
+```sh
+docker compose -f docker-compose.yml up -d --build --wait
+```
+
+Images are published for `linux/amd64` and `linux/arm64`, tagged with `latest`, the version from `package.json`, and the full commit SHA. See [DEPLOY.md](DEPLOY.md) for deployment and migration instructions.
+
+## Local development
+
+Requires **Node.js 22.12 or later** and npm.
 
 ```sh
 npm run install:all
 npm run dev
 ```
 
-- Aplicação: http://localhost:5173
-- API: http://localhost:3001/health
-- `Ctrl+C` termina os dois processos.
+- Application: http://localhost:5173
+- API health check: http://localhost:3001/health
+- Press `Ctrl+C` to stop both processes.
 
-Não é necessário criar `.env`. Para personalizar portas, concorrência ou diretório de chaves, usa [.env.example](.env.example). O Vite lê o `.env` da raiz; `/api` é encaminhado para a API local. Se mudares `PORT`, ajusta também o destino do proxy em `client/vite.config.ts`.
+An `.env` file is optional. See [.env.example](.env.example) to configure ports, PDF concurrency, and proxy settings. Vite reads the root `.env` and forwards `/api` to the local API. If you change `PORT`, update the proxy target in [client/vite.config.ts](client/vite.config.ts) as well.
 
-## Funcionalidades
+## Features
 
-- Nove templates: Modern, Classic, Minimal, Creative, Executive, **Compact, Studio, Technical e Academic**.
-- Galeria com filtros, personalização de cor, fotografia, tema claro/escuro e interface responsiva.
-- Português, inglês, espanhol, francês e alemão.
-- Dados pessoais, resumo, experiência, formação, competências, idiomas, projetos e certificados.
-- Download direto e gratuito do PDF, sem marca de água, checkout ou envio de emails.
-- Botão «Upload CV já existente» em destaque na landing e no editor: JSON e PDFs exportados pelo OpenCV, com confirmação antes de substituir o rascunho.
-- Recomeçar com confirmação, desfazer/refazer e preview com scroll independente.
-- Cópia editável em JSON, rascunho local e desfazer/refazer.
-- Certificados PDF: 10 MB por ficheiro, 50 MB no total; moldura opcional e preservação de todas as páginas.
+- **Nine templates:** Modern, Classic, Minimal, Creative, Executive, Compact, Studio, Technical, and Academic.
+- **Live preview:** independently scrollable pages alongside the editor, with a dedicated mobile preview.
+- **Personalization:** accent colors, profile photos, light and dark themes, and a responsive layout.
+- **Five interface languages:** Portuguese, English, Spanish, French, and German.
+- **Complete CV sections:** personal details, summary, experience, education, skills, languages, projects, and certificates.
+- **Free PDF exports:** direct downloads without accounts, checkout, watermarks, or email delivery.
+- **Upload and resume:** import OpenCV PDFs or editable JSON files from the landing page or editor, with confirmation before replacing a draft.
+- **Local drafts:** automatic browser storage, JSON backups, undo/redo, and a reset action with confirmation.
+- **PDF certificates:** up to 10 MB per file and 50 MB in total, with optional framing and every page preserved.
 
-O rascunho fica no `localStorage` deste browser. Se o browser recusar a gravação (por exemplo, por falta de espaço), aparece um aviso: guarda o JSON editável antes de sair. JSONs importados são validados antes de entrar no editor.
+Drafts are stored in your browser's `localStorage`. If saving fails, the editor displays a warning so you can download an editable JSON backup. Imported data is validated before it reaches the editor.
 
-## Dados e PDFs
+## Data and editable PDFs
 
-A API processa os CVs em memória, sem guardar rascunhos ou PDFs em disco. Não existem integrações de pagamento, email, notificações de vendas ou analytics.
+The API processes CVs in memory without storing drafts or generated PDFs on disk. The application has no payment, email, sales notification, or analytics integrations.
 
-Cada PDF inclui os dados editáveis num anexo JSON (`opencv.json`), sem encriptação nem assinatura. Pode ser reimportado e editado em qualquer instalação OpenCV, sem chaves ou dependência do servidor que o gerou. Quem recebe o PDF também pode ler os dados do anexo. PDFs de outras aplicações sem dados OpenCV não podem ser importados.
+Every exported PDF includes an **`opencv.json` attachment** containing the editable CV data. It is neither encrypted nor signed: you can reimport it into any OpenCV installation, without keys or access to the server that created it. Anyone who receives the PDF can also read its embedded data.
 
-Os PDFs antigos com anexos encriptados `cveaver.dat` ou `opencv.dat` precisam de ser abertos na versão anterior para guardar o JSON. Essa cópia JSON pode ser importada na versão atual. Os rascunhos e preferências da marca anterior continuam a ser lidos no mesmo browser.
+PDFs from other applications that do not contain OpenCV's editable data cannot be imported. You can also save and import a standalone JSON backup.
 
-O preview HTML e o PDF usam renderizadores diferentes; a paginação pode variar. Confirma o PDF final antes de o enviar. Os novos templates permitem múltiplas páginas; Compact reduz espaçamento, sem cortar conteúdo para forçar uma página.
+Older PDFs with encrypted `cveaver.dat` or `opencv.dat` attachments must be opened in the previous version to save a JSON backup. Import that JSON into the current version. Drafts and preferences saved under the previous application name are still recognized in the same browser.
 
-## Verificação
+The HTML preview and PDF export use different renderers, so pagination may vary. Check the exported PDF before sharing it. Compact reduces spacing rather than cutting content to force a single page.
+
+## Tests and validation
 
 ```sh
-npm run build   # TypeScript do cliente e servidor + build Vite
-npm test        # validação, portabilidade, idiomas e round-trip dos nove templates
-npx playwright install chromium # apenas na primeira execução
-npm run test:e2e # fluxos de browser em desktop e mobile
+npm run build                   # Client build and TypeScript checks
+npm test                        # Validation, portability, templates, and PDF round trips
+npx playwright install chromium # Install the browser before the first E2E run
+npm run test:e2e                 # Desktop and mobile browser tests
 ```
 
-Os testes incluem PDFs extensos, alteração de nome após reimportação, leitura num processo independente sem chaves, certificados multipágina e rejeição de dados inválidos.
+Unit tests cover all nine templates, long CVs, editing after reimport, reading PDFs in a separate process without keys, multipage certificates, and rejection of invalid data.
 
-Os testes de browser iniciam os servidores de desenvolvimento quando necessário. Para testar uma instalação já ativa, usa `E2E_BASE_URL=http://localhost:8080 npm run test:e2e`. Cobrem upload JSON/PDF, ficheiros inválidos, substituição/cancelamento, persistência, reset/desfazer, scroll de CVs extensos e créditos Konami.
+Browser tests start development servers when needed. They cover JSON/PDF upload, invalid files, replacement and cancellation, draft persistence, reset and undo, long-preview scrolling, and the developer Easter egg.
 
-A CI executa os testes de browser contra a stack Docker real. Só publica imagens no Docker Hub (`tomasneto26`) depois de passarem o build, TypeScript, testes e verificação de segredos.
+To test a running Docker deployment:
+
+```sh
+E2E_BASE_URL=http://localhost:8080 npm run test:e2e
+```
+
+[GitHub Actions](https://github.com/Tomasneto404/OpenCV/actions) runs the browser tests against the actual Docker container. Images are published to `tomasneto26/opencv` only after the build, type checks, tests, and secret scan pass.
 
 ## API
 
-| Método | Endpoint | Função |
+The application uses the `/api` prefix in production and through the Vite development proxy. The standalone development API also accepts the same routes without that prefix.
+
+| Method | Endpoint | Description |
 | --- | --- | --- |
-| GET | `/health` | Estado do serviço |
-| POST | `/pdf` | Recebe `{ cv }` e devolve o PDF, gratuitamente |
-| POST | `/decode-pdf` | Recebe bytes `application/pdf` e devolve o CV validado |
+| GET | `/api/health` | Service health |
+| POST | `/api/pdf` | Accepts `{ cv }` and returns a PDF |
+| POST | `/api/decode-pdf` | Accepts an `application/pdf` body and returns validated CV data |
 
-A API limita a frequência e concorrência de pedidos. O limite de corpo HTTP é 80 MB para acomodar os anexos codificados em base64. Não existem endpoints de checkout, sessões pagas ou email.
+The API limits request rates and concurrent PDF generation. The request body limit is 80 MB to accommodate base64-encoded attachments.
 
-## Docker
+## Project structure
 
-```sh
-docker compose up -d --wait
-```
+| Path | Purpose |
+| --- | --- |
+| `client/` | React, TypeScript, Vite, Tailwind, the editor, and HTML preview |
+| `server/` | Express API, static interface hosting, PDF generation, and import |
+| `shared/` | CV types and validation shared by the client and server |
+| `tests/e2e/` | Playwright desktop and mobile tests |
+| `docs/screenshots/` | Screenshots used in this README |
+| `Dockerfile` | Builds the interface and packages the single application container |
+| `compose.yaml` | Production deployment using Docker Hub images |
+| `docker-compose.yml` | Local container builds |
 
-O `compose.yaml` descarrega `tomasneto26/opencv:latest` diretamente do Docker Hub. Para fixar a versão atual, usa `IMAGE_TAG=0.1.0 docker compose up -d --wait`. Para construir o código localmente, usa `docker compose -f docker-compose.yml up -d --build --wait`.
+## Credits
 
-Abre http://localhost:8080. Um único container Node.js serve a interface e a API `/api`. Não precisa de chaves nem volumes. Vê [DEPLOY.md](DEPLOY.md) para detalhes de migração.
+Developed with care by [Tomás Neto](https://github.com/Tomasneto404).
 
-## Estrutura
+Enter the Konami code outside a text field to reveal the developer Easter egg: **↑ ↑ ↓ ↓ ← → ← → B A**.
 
-- `client/`: React, TypeScript, Vite, Tailwind, editor e preview HTML.
-- `server/`: Express, React PDF, pdf-lib, exportação e leitura de PDFs portáveis.
-- `shared/`: tipos e validação usados no cliente e no servidor.
+## License
 
-A marca da aplicação foi alterada para OpenCV. Não foi configurado nem publicado um novo domínio.
-
-## Licença
-
-Privado — todos os direitos reservados a Tomás Neto. © 2026.
+© 2026 Tomás Neto. All rights reserved.

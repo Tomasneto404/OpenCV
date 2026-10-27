@@ -22,6 +22,20 @@ jobs:
         service: [client, server]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Read application version
+        id: version
+        run: |
+          node <<'NODE'
+          const { appendFileSync } = require('node:fs');
+          const { version } = require('./package.json');
+          if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
+            throw new Error('package.json must contain a Docker-compatible semantic version');
+          }
+          appendFileSync(process.env.GITHUB_OUTPUT, `value=${version}\n`);
+          NODE
       - name: Check Docker Hub credentials
         env:
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -44,9 +58,11 @@ jobs:
           push: true
           tags: |
             tomasneto26/opencv-${{ matrix.service }}:latest
+            tomasneto26/opencv-${{ matrix.service }}:${{ steps.version.outputs.value }}
             tomasneto26/opencv-${{ matrix.service }}:${{ github.sha }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.version.outputs.value }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.title=OpenCV ${{ matrix.service }}
           cache-from: type=gha,scope=${{ matrix.service }}

@@ -4,13 +4,15 @@ A stack contém dois serviços: `client` (nginx, porta pública 8080) e `server`
 
 ```sh
 docker compose config -q
-docker compose up -d --build
+docker compose up -d --wait
 docker compose logs -f
 ```
 
 Abre http://localhost:8080. `WEB_PORT` altera a porta pública. Para publicar na Internet, coloca a porta do cliente atrás do teu reverse proxy com HTTPS. O browser utiliza `/api` na mesma origem, sem domínios codificados na aplicação.
 
-O compose atual é autónomo: não inicia o antigo Traefik, proxy Docker ou Watchtower. Não contém configuração DNS e não altera um domínio existente. As GitHub Actions constroem imagens `opencv-client` e `opencv-server`; o compose local constrói diretamente o código.
+O `compose.yaml` de produção descarrega sempre as imagens `latest` do Docker Hub, sem build local. Basta colocar este ficheiro no servidor e executar o comando acima. `WEB_PORT=80 docker compose up -d --wait` permite usar a porta 80.
+
+O compose atual é autónomo: não inicia o antigo Traefik, proxy Docker ou Watchtower. Não contém configuração DNS e não altera um domínio existente. As GitHub Actions constroem imagens `opencv-client` e `opencv-server`; `docker-compose.yml` permite construir diretamente o código com `-f docker-compose.yml`.
 
 ## Migrar uma instalação anterior
 
@@ -39,7 +41,7 @@ Em cada push para `main` (ou execução manual da CI nessa branch), o GitHub Act
 - `tomasneto26/opencv-client:latest`
 - `tomasneto26/opencv-server:latest`
 
-Cada imagem recebe também uma tag com o SHA completo do commit. Para uma versão fixa e consistente entre os dois serviços, define `IMAGE_TAG` com esse SHA. O workflow publica na conta Docker Hub `tomasneto26`, que é independente do utilizador GitHub `Tomasneto404`.
+Cada imagem é construída uma vez por arquitetura e publicada com três tags apontando para o mesmo conteúdo: `latest`, a versão de `package.json` (atualmente **`0.1.0`**) e o SHA completo do commit. Não é feito um segundo build para a tag de versão. Para uma versão fixa e consistente entre os dois serviços, define `IMAGE_TAG` com esse SHA. O workflow publica na conta Docker Hub `tomasneto26`, que é independente do utilizador GitHub `Tomasneto404`.
 
 ### Configuração inicial
 
@@ -48,23 +50,31 @@ Cada imagem recebe também uma tag com o SHA completo do commit. Para uma versã
 3. Cria os repositórios públicos `tomasneto26/opencv-client` e `tomasneto26/opencv-server` no Docker Hub.
 4. Executa novamente a CI em `main` para publicar a primeira versão. O workflow verifica a credencial antes de tentar publicar; os testes não precisam deste secret.
 
-O token fica apenas nos secrets do GitHub. O nome de utilizador está definido no workflow. As tags `latest` e SHA são publicadas nas duas arquiteturas.
+O token fica apenas nos secrets do GitHub. O nome de utilizador está definido no workflow. As tags `latest`, versão e SHA são publicadas nas duas arquiteturas. Atualiza a versão no `package.json` antes de publicar uma nova versão; novos pushes com a mesma versão atualizam essa tag. Usa a tag SHA para fixar um build específico.
 
 Para executar as imagens publicadas, sem construir no servidor:
 
 ```sh
-docker compose -f docker-compose.hub.yml config -q
-docker compose -f docker-compose.hub.yml pull
-docker compose -f docker-compose.hub.yml up -d --wait
+docker compose -f compose.yaml config -q
+docker compose -f compose.yaml pull
+docker compose -f compose.yaml up -d --wait
 ```
 
 Se optares por imagens privadas, autentica o host com um token de leitura usando `docker login --username tomasneto26 --password-stdin`. Imagens públicas não precisam de autenticação para o pull.
+
+Para fixar a versão atual em vez de seguir `latest`:
+
+```sh
+IMAGE_TAG=0.1.0 docker compose up -d --wait
+```
+
+Também podes guardar `IMAGE_TAG=0.1.0` num `.env` junto ao `compose.yaml`. Por omissão, o deployment usa `latest`. As chaves são preservadas no volume `opencv-keys` entre atualizações.
 
 Ambos os ficheiros compose usam o mesmo nome de projeto e volume de chaves. Usa apenas um deles de cada vez para a mesma instalação. Numa migração, preserva as chaves antes de substituir os serviços.
 
 Para validar localmente o mesmo fluxo usado na CI:
 
 ```sh
-docker compose up -d --build --wait
+docker compose -f docker-compose.yml up -d --build --wait
 E2E_BASE_URL=http://localhost:8080 npm run test:e2e
 ```

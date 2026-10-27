@@ -1,8 +1,10 @@
-# Standalone deployment using the images published by CI.
+# Production: docker compose up -d --wait
+# Downloads Docker Hub images; no source code or local build required.
 name: opencv
 services:
   server:
     image: ${DOCKERHUB_USER:-tomasneto26}/opencv-server:${IMAGE_TAG:-latest}
+    pull_policy: always
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -17,6 +19,7 @@ services:
       - '3001'
   client:
     image: ${DOCKERHUB_USER:-tomasneto26}/opencv-client:${IMAGE_TAG:-latest}
+    pull_policy: always
     restart: unless-stopped
     ports:
       - '${WEB_PORT:-8080}:8080'

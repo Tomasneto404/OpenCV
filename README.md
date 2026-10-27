@@ -72,8 +72,10 @@ A API limita a frequência e concorrência de pedidos. O limite de corpo HTTP é
 ## Docker
 
 ```sh
-docker compose up -d --build
+docker compose up -d --wait
 ```
+
+O `compose.yaml` descarrega `tomasneto26/opencv-client:latest` e `tomasneto26/opencv-server:latest` diretamente do Docker Hub. Para fixar a versão atual, usa `IMAGE_TAG=0.1.0 docker compose up -d --wait`. Para construir o código localmente, usa `docker compose -f docker-compose.yml up -d --build --wait`.
 
 Abre http://localhost:8080. O nginx serve a aplicação e encaminha `/api` para o servidor na rede privada. O volume `opencv-keys` preserva as chaves. Vê [DEPLOY.md](DEPLOY.md) para detalhes de migração.
 

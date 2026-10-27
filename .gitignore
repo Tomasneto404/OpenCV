@@ -7,3 +7,8 @@ keys/
 .DS_Store
 *.log
 .vite
+
+.cache/
+
+playwright-report/
+test-results/

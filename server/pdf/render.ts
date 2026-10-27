@@ -7,7 +7,7 @@
  *   3. Append each certificate either as 1:1 copies (framed === false) or
  *      inside a template-coherent frame (framed === true / undefined).
  *   4. Encrypt the canonical payload (cv + meta + internal signature) and
- *      attach as cveaver.dat — opaque to anyone who opens the PDF.
+ *      attach as opencv.dat — opaque to anyone who opens the PDF.
  *   5. Set producer/author/title/keywords metadata
  *   6. Return the final bytes as a Buffer
  *
@@ -18,7 +18,6 @@
  *   - creative → bold accent header block, content below
  *   - executive→ double-rule top/bottom in accent, serif
  */
-import { createElement } from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
 import { PDFDocument, StandardFonts, rgb, type RGB, type PDFEmbeddedPage, type PDFFont, type PDFPage } from 'pdf-lib';
 import { PdfDocument } from './document.js';
@@ -26,7 +25,7 @@ import { encryptPayload } from '../crypto.js';
 import type { CVData, CertificateItem, SignatureEnvelope, PublicKeyInfo, CVMeta, EmbedPayloadV2, TemplateId } from '../types.js';
 
 const APP_VERSION = '0.6.0';
-const ATTACHMENT_NAME = 'cveaver.dat';
+const ATTACHMENT_NAME = 'opencv.dat';
 
 /* A4 dimensions in PDF points (1/72 in). */
 const A4 = { width: 595.28, height: 841.89 } as const;
@@ -38,7 +37,7 @@ export interface RenderOptions {
 }
 
 export async function renderPdf(cv: CVData, opts: RenderOptions): Promise<Buffer> {
-  const baseBuffer = await renderToBuffer(createElement(PdfDocument, { cv }));
+  const baseBuffer = await renderToBuffer(PdfDocument({ cv }));
   const doc = await PDFDocument.load(baseBuffer);
 
   if (cv.certificates && cv.certificates.length > 0) {
@@ -65,14 +64,14 @@ export async function renderPdf(cv: CVData, opts: RenderOptions): Promise<Buffer
           await drawFramedCert(doc, certBytes, cert, i, cv.template, accent, fonts);
         }
       } catch (err) {
-        console.warn(`[pdf] skipping cert "${cert.name}": ${(err as Error).message}`);
+        throw new Error(`Invalid certificate: ${cert.name}`, { cause: err });
       }
     }
   }
 
   const payload: EmbedPayloadV2 = {
     v: 2,
-    app: 'CVeaver',
+    app: 'OpenCV',
     appVersion: APP_VERSION,
     cv,
     meta: opts.meta,
@@ -90,10 +89,10 @@ export async function renderPdf(cv: CVData, opts: RenderOptions): Promise<Buffer
 
   doc.setTitle(`CV — ${cv.personal.fullName || 'Sem nome'}`);
   if (cv.personal.fullName) doc.setAuthor(cv.personal.fullName);
-  doc.setCreator('CVeaver');
-  doc.setProducer(`CVeaver ${APP_VERSION}`);
+  doc.setCreator('OpenCV');
+  doc.setProducer(`OpenCV ${APP_VERSION}`);
   doc.setSubject(cv.personal.headline || 'Curriculum Vitae');
-  doc.setKeywords(['CVeaver', 'CV', 'Resume', cv.template]);
+  doc.setKeywords(['OpenCV', 'CV', 'Resume', cv.template]);
 
   const out = await doc.save({ useObjectStreams: true });
   return Buffer.from(out);
@@ -122,6 +121,11 @@ async function drawFramedCert(
   fonts: FrameFonts,
 ): Promise<void> {
   const src = await PDFDocument.load(certBytes, { ignoreEncryption: false });
+  // PDF pages may be valid but completely blank, with no content stream.
+  // Add an invisible mark so pdf-lib can embed them without dropping a page.
+  for (const page of src.getPages()) {
+    if (!page.node.Contents()) page.drawRectangle({ x: 0, y: 0, width: 1, height: 1, opacity: 0 });
+  }
   const embedded = await doc.embedPdf(src, src.getPageIndices());
   const total = embedded.length;
 
@@ -146,11 +150,14 @@ function drawTemplateChrome(
 ): ContentArea {
   switch (template) {
     case 'classic':   return drawClassicChrome  (page, cert, current, total, accent, fonts);
+    case 'compact':
+    case 'studio':
+    case 'technical':
+    case 'academic':
     case 'minimal':   return drawMinimalChrome  (page, cert, current, total, accent, fonts);
     case 'creative':  return drawCreativeChrome (page, cert, current, total, accent, fonts);
     case 'executive': return drawExecutiveChrome(page, cert, current, total, accent, fonts);
     case 'modern':
-    case 'compact':
     default:          return drawModernChrome   (page, cert, current, total, index, accent, fonts);
   }
 }
@@ -182,17 +189,17 @@ function drawModernChrome(page: PDFPage, cert: CertificateItem, current: number,
   if (cert.description) {
     drawWrappedText(page, cert.description, {
       x: textX, y: top - 70, maxWidth: SIDEBAR - left - 14,
-      font: fonts.sansItalic, size: 9.5, color: rgb(1, 1, 1, 0.85), lineHeight: 1.4,
+      font: fonts.sansItalic, size: 9.5, color: rgb(1, 1, 1), lineHeight: 1.4,
     });
   }
 
   // Sidebar footer
-  page.drawText('CVeaver', {
-    x: textX, y: 38, size: 9, font: fonts.sansBold, color: rgb(1, 1, 1, 0.85),
+  page.drawText('OpenCV', {
+    x: textX, y: 38, size: 9, font: fonts.sansBold, color: rgb(1, 1, 1),
   });
   const pageLabel = total > 1 ? `${current} / ${total}` : `${cert.pageCount} ${cert.pageCount === 1 ? 'pág.' : 'págs.'}`;
   page.drawText(pageLabel, {
-    x: textX, y: 24, size: 8.5, font: fonts.sans, color: rgb(1, 1, 1, 0.7),
+    x: textX, y: 24, size: 8.5, font: fonts.sans, color: rgb(1, 1, 1),
   });
 
   return { left: SIDEBAR + 24, right: width - 24, top: height - 24, bottom: 24 };
@@ -213,7 +220,7 @@ function drawClassicChrome(page: PDFPage, cert: CertificateItem, current: number
   page.drawLine({ start: { x: margin, y: height - 132 }, end: { x: width - margin, y: height - 132 }, thickness: 0.5, color: accent, opacity: 0.65 });
 
   // Footer
-  drawCenteredText(page, `cveaver.com · ${current} de ${total}`, { y: 30, font: fonts.serif, size: 9, color: rgb(0.5, 0.41, 0.27), pageWidth: width });
+  drawCenteredText(page, `OpenCV · ${current} de ${total}`, { y: 30, font: fonts.serif, size: 9, color: rgb(0.5, 0.41, 0.27), pageWidth: width });
 
   return { left: margin, right: width - margin, top: height - 148, bottom: 56 };
 }
@@ -240,7 +247,7 @@ function drawMinimalChrome(page: PDFPage, cert: CertificateItem, current: number
   page.drawLine({ start: { x: margin, y: height - 118 }, end: { x: margin + 36, y: height - 118 }, thickness: 1.4, color: accent });
 
   // Footer
-  page.drawText('cveaver.com', { x: margin, y: 28, size: 8.5, font: fonts.sans, color: rgb(0.5, 0.41, 0.27) });
+  page.drawText('OpenCV', { x: margin, y: 28, size: 8.5, font: fonts.sans, color: rgb(0.5, 0.41, 0.27) });
   const right = `${current} / ${total}`;
   const tw = fonts.sans.widthOfTextAtSize(right, 8.5);
   page.drawText(right, { x: width - margin - tw, y: 28, size: 8.5, font: fonts.sans, color: rgb(0.5, 0.41, 0.27) });
@@ -257,7 +264,7 @@ function drawCreativeChrome(page: PDFPage, cert: CertificateItem, current: numbe
 
   page.drawRectangle({ x: 0, y: height - HEADER_H, width, height: HEADER_H, color: accent });
   page.drawText('CERTIFICADO', {
-    x: margin, y: height - 44, size: 8.5, font: fonts.sansBold, color: rgb(1, 1, 1, 0.88),
+    x: margin, y: height - 44, size: 8.5, font: fonts.sansBold, color: rgb(1, 1, 1),
   });
   drawWrappedText(page, cert.name || 'Certificado', {
     x: margin, y: height - 68, maxWidth: width - margin * 2,
@@ -266,16 +273,16 @@ function drawCreativeChrome(page: PDFPage, cert: CertificateItem, current: numbe
   if (cert.description) {
     drawWrappedText(page, cert.description, {
       x: margin, y: height - 92, maxWidth: width - margin * 2,
-      font: fonts.sans, size: 10.5, color: rgb(1, 1, 1, 0.92), lineHeight: 1.4,
+      font: fonts.sans, size: 10.5, color: rgb(1, 1, 1), lineHeight: 1.4,
     });
   }
 
   // Footer accent strip
   page.drawRectangle({ x: 0, y: 0, width, height: FOOTER_H, color: accent });
-  page.drawText('cveaver.com', { x: margin, y: 12, size: 9, font: fonts.sansBold, color: rgb(1, 1, 1, 0.88) });
+  page.drawText('OpenCV', { x: margin, y: 12, size: 9, font: fonts.sansBold, color: rgb(1, 1, 1) });
   const right = `${current} / ${total}`;
   const tw = fonts.sansBold.widthOfTextAtSize(right, 9);
-  page.drawText(right, { x: width - margin - tw, y: 12, size: 9, font: fonts.sansBold, color: rgb(1, 1, 1, 0.88) });
+  page.drawText(right, { x: width - margin - tw, y: 12, size: 9, font: fonts.sansBold, color: rgb(1, 1, 1) });
 
   return { left: margin, right: width - margin, top: height - HEADER_H - 16, bottom: FOOTER_H + 16 };
 }
@@ -298,7 +305,7 @@ function drawExecutiveChrome(page: PDFPage, cert: CertificateItem, current: numb
   // Bottom double rule
   page.drawLine({ start: { x: margin, y: 60 }, end: { x: width - margin, y: 60 }, thickness: 0.5, color: accent, opacity: 0.65 });
   page.drawLine({ start: { x: margin, y: 56 }, end: { x: width - margin, y: 56 }, thickness: 1.6, color: accent });
-  drawCenteredText(page, `cveaver.com · ${current} de ${total}`, { y: 36, font: fonts.serif, size: 9, color: rgb(0.5, 0.41, 0.27), pageWidth: width });
+  drawCenteredText(page, `OpenCV · ${current} de ${total}`, { y: 36, font: fonts.serif, size: 9, color: rgb(0.5, 0.41, 0.27), pageWidth: width });
 
   return { left: margin, right: width - margin, top: height - 152, bottom: 80 };
 }

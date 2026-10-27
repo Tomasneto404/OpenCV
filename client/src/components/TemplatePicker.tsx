@@ -1,41 +1,21 @@
+import { useMemo } from 'react';
 import type { TemplateId } from '../types';
 import { TEMPLATES } from '../templates';
 import { useT } from '../i18n';
+import { useCopy } from '../i18n/workspace';
+import { sampleCVByLocale } from '../utils/sampleCvByLocale';
 
-interface Props {
-  value: TemplateId;
-  onChange: (id: TemplateId) => void;
+export const templateCategories: Record<TemplateId, 'clean' | 'expressive' | 'formal'> = { modern: 'formal', classic: 'formal', minimal: 'clean', creative: 'expressive', executive: 'formal', compact: 'clean', studio: 'expressive', technical: 'clean', academic: 'formal' };
+export const galleryOrder: TemplateId[] = ['studio', 'modern', 'minimal', 'technical', 'classic', 'creative', 'academic', 'executive', 'compact'];
+export function TemplateMiniature({ id }: { id: TemplateId }) {
+  const { locale } = useT();
+  const cv = useMemo(() => ({ ...sampleCVByLocale(locale), template: id }), [locale, id]);
+  const Template = TEMPLATES[id].component;
+  return <div className={`template-miniature miniature-${id}`} aria-hidden="true"><div className="miniature-paper"><Template cv={cv} /></div></div>;
 }
-
-export function TemplatePicker({ value, onChange }: Props) {
-  const { t: tr } = useT();
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-      {Object.values(TEMPLATES).map((t) => {
-        const active = t.id === value;
-        return (
-          <button
-            key={t.id}
-            disabled={!t.available}
-            onClick={() => t.available && onChange(t.id)}
-            className={[
-              'rounded-lg p-3 text-left border transition',
-              active ? 'border-brand-400 bg-white/10' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06]',
-              !t.available ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
-            ].join(' ')}
-          >
-            <div className="flex items-center justify-between gap-1.5 mb-1">
-              <span className="text-sm font-semibold truncate min-w-0">{t.label}</span>
-              {!t.available && (
-                <span className="shrink-0 whitespace-nowrap rounded-full border border-white/15 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-white/45">
-                  {tr('landing.templates.comingSoon')}
-                </span>
-              )}
-            </div>
-            <p className="text-[11.5px] text-white/55 leading-snug">{t.description}</p>
-          </button>
-        );
-      })}
-    </div>
-  );
+export function TemplatePicker({ value, onChange }: { value: TemplateId; onChange: (id: TemplateId) => void }) {
+  const c = useCopy();
+  return <div className="template-picker">{galleryOrder.map(id => <button key={id} className={`picker-card ${value === id ? 'selected' : ''}`} onClick={() => onChange(id)} aria-pressed={value === id}>
+    <TemplateMiniature id={id} /><span><strong>{TEMPLATES[id].label}</strong><span>{value === id ? '✓' : '↗'}</span></span><small>{c[templateCategories[id]]}</small>
+  </button>)}</div>;
 }

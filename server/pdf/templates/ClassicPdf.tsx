@@ -51,7 +51,7 @@ export function ClassicPdf({ cv }: Props) {
   const L = labelsFor(cv.locale).sections;
 
   return (
-    <Document title={p.fullName || 'CV'} author={p.fullName} producer="CVeaver">
+    <Document title={p.fullName || 'CV'} author={p.fullName} producer="OpenCV">
       <Page size="A4" style={s.page} wrap>
         <View style={s.header}>
           <Text style={s.name}>{p.fullName || 'O teu nome'}</Text>

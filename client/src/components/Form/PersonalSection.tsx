@@ -22,9 +22,6 @@ interface Props {
   onChange: (next: PersonalInfo) => void;
   accentColor: CVData['accentColor'];
   onAccentChange: (color: string) => void;
-  /** On the paid-update flow the name is pinned to the original CV (anti-fraud,
-   *  enforced server-side too). When true the name field is read-only. */
-  nameLocked?: boolean;
 }
 
 const SWATCHES = [
@@ -52,7 +49,7 @@ function isLikelyEmail(v: string): boolean {
   return EMAIL_RE.test(v.trim());
 }
 
-export function PersonalSection({ value, onChange, accentColor, onAccentChange, nameLocked = false }: Props) {
+export function PersonalSection({ value, onChange, accentColor, onAccentChange }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [hexDraft, setHexDraft] = useState(accentColor);
   const [hexInvalid, setHexInvalid] = useState(false);
@@ -103,34 +100,25 @@ export function PersonalSection({ value, onChange, accentColor, onAccentChange, 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div className="sm:col-span-2">
-        <label className="label flex items-center gap-1.5">
+        <label className="label flex items-center gap-1.5" htmlFor="personal-fullName">
           {t('personal.fullName')}
-          {nameLocked && (
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-white/40">
-              <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-          )}
         </label>
         <input
           className="field disabled:opacity-60 disabled:cursor-not-allowed"
-          value={value.fullName}
+          id="personal-fullName" value={value.fullName}
           onChange={(e) => set('fullName', e.target.value)}
-          disabled={nameLocked}
-          readOnly={nameLocked}
-          title={nameLocked ? t('personal.nameLockedHint') : undefined}
         />
-        {nameLocked && <p className="mt-1 text-[11px] text-white/45">{t('personal.nameLockedHint')}</p>}
       </div>
       <div className="sm:col-span-2">
-        <label className="label">{t('personal.headline')}</label>
-        <input className="field" value={value.headline} onChange={(e) => set('headline', e.target.value)} />
+        <label className="label" htmlFor="personal-headline">{t('personal.headline')}</label>
+        <input className="field" id="personal-headline" value={value.headline} onChange={(e) => set('headline', e.target.value)} />
       </div>
       <div>
-        <label className="label">{t('personal.email')}</label>
+        <label className="label" htmlFor="personal-email">{t('personal.email')}</label>
         <input
           className={['field', value.email && !isLikelyEmail(value.email) ? 'border-amber-400/40' : ''].join(' ')}
           type="email" inputMode="email" autoComplete="email"
-          value={value.email}
+          id="personal-email" value={value.email}
           onChange={(e) => set('email', e.target.value)}
           aria-invalid={value.email ? !isLikelyEmail(value.email) : undefined}
         />
@@ -139,25 +127,25 @@ export function PersonalSection({ value, onChange, accentColor, onAccentChange, 
         )}
       </div>
       <div>
-        <label className="label">{t('personal.phone')}</label>
+        <label className="label" htmlFor="personal-phone">{t('personal.phone')}</label>
         <input className="field" type="tel" inputMode="tel" autoComplete="tel"
-          value={value.phone} onChange={(e) => set('phone', e.target.value)} />
+          id="personal-phone" value={value.phone} onChange={(e) => set('phone', e.target.value)} />
       </div>
       <div>
-        <label className="label">{t('personal.location')}</label>
-        <input className="field" value={value.location} onChange={(e) => set('location', e.target.value)} />
+        <label className="label" htmlFor="personal-location">{t('personal.location')}</label>
+        <input className="field" id="personal-location" value={value.location} onChange={(e) => set('location', e.target.value)} />
       </div>
       <div>
-        <label className="label">{t('personal.website')}</label>
-        <input className="field" value={value.website} onChange={(e) => set('website', e.target.value)} />
+        <label className="label" htmlFor="personal-website">{t('personal.website')}</label>
+        <input className="field" id="personal-website" value={value.website} onChange={(e) => set('website', e.target.value)} />
       </div>
       <div>
-        <label className="label">{t('personal.linkedin')}</label>
-        <input className="field" value={value.linkedin} onChange={(e) => set('linkedin', e.target.value)} />
+        <label className="label" htmlFor="personal-linkedin">{t('personal.linkedin')}</label>
+        <input className="field" id="personal-linkedin" value={value.linkedin} onChange={(e) => set('linkedin', e.target.value)} />
       </div>
       <div>
-        <label className="label">{t('personal.github')}</label>
-        <input className="field" value={value.github} onChange={(e) => set('github', e.target.value)} />
+        <label className="label" htmlFor="personal-github">{t('personal.github')}</label>
+        <input className="field" id="personal-github" value={value.github} onChange={(e) => set('github', e.target.value)} />
       </div>
 
       <div className="sm:col-span-2 pt-3 border-t border-white/10">

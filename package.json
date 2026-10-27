@@ -1,16 +1,19 @@
 {
-  "name": "cveaver",
+  "name": "opencv",
   "version": "0.1.0",
   "private": true,
-  "description": "Pay-per-use CV generator — €1 to download, €0.50 to update. No login.",
+  "description": "Free CV builder with live preview and editable PDF exports",
   "scripts": {
     "dev": "concurrently -k -n server,client -c green,cyan \"npm run dev:server\" \"npm run dev:client\"",
     "dev:client": "npm --prefix client run dev",
     "dev:server": "npm --prefix server run dev",
-    "build": "npm --prefix client run build",
-    "install:all": "npm install && npm --prefix client install && npm --prefix server install"
+    "build": "npm --prefix client run build && npm --prefix server run typecheck",
+    "install:all": "npm install && npm --prefix client install && npm --prefix server install",
+    "test": "npm --prefix server test",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "concurrently": "^9.0.0"
   }
 }

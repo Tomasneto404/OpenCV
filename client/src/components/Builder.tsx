@@ -1,19 +1,5 @@
-/**
- * Builder — the editing surface.
- *
- *   Left pane (≤ 420 px): section chips + active section form.
- *   Right pane: live preview (rendered with the same React components used in
- *               the on-screen preview; the actual PDF goes through react-pdf
- *               at download time).
- *
- * The toolbar shows undo/redo/clear, a "saving / saved" pulse, dev shortcuts
- * (only in `import.meta.env.DEV`), and the primary Pay CTA which switches its
- * label between €1 (new) and €0,50 (update) based on App.tsx's `mode` prop.
- *
- * All visible strings come from the i18n dictionary.
- */
-import { useEffect, useState, type ReactNode } from 'react';
-import type { CVData, CVMeta } from '../types';
+import { useEffect, useRef, useState } from 'react';
+import type { CVData } from '../types';
 import { PersonalSection } from './Form/PersonalSection';
 import { SummarySection } from './Form/SummarySection';
 import { ExperienceSection } from './Form/ExperienceSection';
@@ -24,334 +10,91 @@ import { ProjectsSection } from './Form/ProjectsSection';
 import { CertificatesSection } from './Form/CertificatesSection';
 import { TemplatePicker } from './TemplatePicker';
 import { Preview } from './Preview';
-import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
-import { sectionStatus, isCvEmpty, type SectionKey } from '../utils/completion';
-import { useT } from '../i18n';
-import { PRICES, formatPrice } from '../utils/format';
+import { UploadCV } from './UploadCV';
 import { BrandMark } from './BrandMark';
-import { Badge } from './Badge';
-import { BetaBadge } from './BetaBadge';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
-import { BYPASS_PAYMENT_FOR_TESTING, BETA_PAYMENTS } from '../App';
-import { ConsentModal } from './ConsentModal';
-import { readCheckoutConsent } from '../utils/legal';
-
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { sectionStatus, isCvEmpty, type SectionKey } from '../utils/completion';
+import { downloadConfig, slugify } from '../utils/download';
+import { useT } from '../i18n';
+import { useCopy } from '../i18n/workspace';
+import { TEMPLATES } from '../templates';
 interface Props {
-  cv: CVData;
-  mode: 'new' | 'update';
-  /** Rank info from the previously-loaded PDF (update flow). Drives the badge chip. */
-  meta?: CVMeta;
-  onChange: (next: CVData) => void;
-  onBack: () => void;
-  onPay: () => void;
-  paying: boolean;
-  onUndo: () => void;
-  onRedo: () => void;
-  onClear: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
-  saving: boolean;
-  onLoadSample: () => void;
-  /** Used by the ConsentModal links (Terms / Privacy). */
-  onNavigate: (path: string) => void;
+  cv: CVData; onLoadConfig: (cv: CVData) => void; onChange: (next: CVData) => void; onBack: () => void;
+  onExport: () => void; exporting: boolean; onUndo: () => void; onRedo: () => void; onClear: () => void;
+  canUndo: boolean; canRedo: boolean; saving: boolean; saveError: boolean; onLoadSample: () => void;
 }
-
-const SECTION_KEYS: SectionKey[] = [
-  'template', 'personal', 'summary', 'experience',
-  'education', 'skills', 'languages', 'projects', 'certificates',
-];
-
-export function Builder({
-  cv, mode, meta, onChange, onBack, onPay, paying,
-  onUndo, onRedo, onClear, canUndo, canRedo,
-  saving, onLoadSample, onNavigate,
-}: Props) {
+const sections: SectionKey[] = ['personal', 'summary', 'experience', 'education', 'skills', 'languages', 'projects', 'certificates'];
+const icons = ['◉', '≡', '▣', '◇', '✧', '◎', '▧', '▤'];
+export function Builder({ cv, onLoadConfig, onChange, onBack, onExport, exporting, onUndo, onRedo, onClear, canUndo, canRedo, saving, saveError, onLoadSample }: Props) {
   const [active, setActive] = useState<SectionKey>('personal');
   const [previewOpen, setPreviewOpen] = useState(false);
-  /** Zoom that fits the A4 page (794px) to the phone width inside the preview
-   *  modal, so it never overflows the screen. Recomputed on open + resize. */
-  const [previewZoom, setPreviewZoom] = useState<number | undefined>(undefined);
-  /** ConsentModal visibility — opened on first Pay click without stored consent. */
-  const [consentOpen, setConsentOpen] = useState(false);
-  const { t, locale } = useT();
-
-  /** Pay button entry point: short-circuit through ConsentModal on first time. */
-  const handlePayClick = () => {
-    if (BETA_PAYMENTS) { onPay(); return; }
-    if (readCheckoutConsent()) { onPay(); return; }
-    setConsentOpen(true);
-  };
-
+  const [zoom, setZoom] = useState(.7);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const { t } = useT(); const c = useCopy();
   useKeyboardShortcuts({ onUndo, onRedo });
-
   useEffect(() => {
-    if (!previewOpen) return;
-    const fit = () => {
-      const avail = window.innerWidth - 32; // modal content has 16px padding each side
-      setPreviewZoom(Math.min(1, Math.max(0.3, avail / 794)));
-    };
-    fit();
-    window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
-  }, [previewOpen]);
-
-  /** Helper: replace a top-level CV slice without mutating. */
-  const patch = <K extends keyof CVData>(key: K, value: CVData[K]) =>
-    onChange({ ...cv, [key]: value });
-
-  const handleClear = () => {
-    if (window.confirm(t('builder.actions.clearConfirm'))) onClear();
+    const el = previewRef.current; if (!el) return;
+    const fit = () => setZoom(Math.min(.88, Math.max(.2, (el.clientWidth - 64) / 794)));
+    const observer = new ResizeObserver(fit); observer.observe(el); fit(); return () => observer.disconnect();
+  }, []);
+  useEffect(() => { if (previewOpen) dialogRef.current?.showModal(); else dialogRef.current?.close(); }, [previewOpen]);
+  const patch = <K extends keyof CVData>(key: K, value: CVData[K]) => onChange({ ...cv, [key]: value });
+  const handleRestart = () => {
+    if (!window.confirm(t('builder.actions.clearConfirm'))) return;
+    onClear();
+    setActive('personal');
+    setPreviewOpen(false);
+    if (formRef.current) formRef.current.scrollTop = 0;
+    const preview = previewRef.current?.querySelector('.preview-scroll');
+    if (preview) preview.scrollTop = 0;
+    requestAnimationFrame(() => {
+      formRef.current?.querySelector<HTMLInputElement>('#personal-fullName')?.focus({ preventScroll: true });
+    });
   };
-
-  const handleLoadSample = () => {
-    if (!isCvEmpty(cv) && !window.confirm(t('builder.emptySwitchConfirm'))) return;
-    onLoadSample();
-  };
-
-  const priceNew    = formatPrice(PRICES.newCents,    locale);
-  const priceUpdate = formatPrice(PRICES.updateCents, locale);
-
-  const isPayable = cv.personal.fullName.trim().length > 0;
-  const payLabel = BETA_PAYMENTS
-    ? t('beta.payDisabled')
-    : paying
-      ? t('builder.actions.payPreparing')
-      : mode === 'update'
-        ? t('builder.actions.payUpdate', { updatePrice: priceUpdate })
-        : t('builder.actions.payNew',    { price: priceNew });
-
-  return (
-    <div className="min-h-screen flex flex-col">
-      <nav className="px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-3 border-b border-[color:var(--color-border)] sticky top-0 z-20 bg-[color:var(--color-surface-2)]/85 backdrop-blur">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <button className="btn-ghost text-sm shrink-0" onClick={onBack} title={t('builder.backTitle')}>←</button>
-          <BrandMark size={36} className="shrink-0" />
-          <BetaBadge className="shrink-0" />
-          {meta && <Badge meta={meta} compact />}
-          <SaveIndicator saving={saving} t={t} />
+  const filled = sections.filter(key => sectionStatus(cv, key).state === 'filled').length;
+  const index = sections.indexOf(active);
+  const downloadButton = <button className="btn-primary" disabled={exporting || !cv.personal.fullName.trim()} onClick={onExport} title={!cv.personal.fullName.trim() ? c.nameHint : undefined}>{exporting ? <span className="spinner"/> : <span>↓</span>}{exporting ? c.exporting : c.export}</button>;
+  return <div className="builder-shell">
+    <header className="editor-nav"><div className="editor-brand"><button className="icon-button" onClick={onBack} aria-label={c.back}>←</button><BrandMark withWordmark size={30} /><span className="nav-divider"/><span className="editor-document-name">{cv.personal.fullName || c.editor}</span></div>
+      <div className="editor-actions"><span className={`save-status ${saveError ? 'error' : ''}`} role="status"><span className="status-dot"/>{saveError ? '!' : saving ? c.saving : c.saved}</span><ThemeToggle /><LanguageSwitcher /><div className="desktop-export">{downloadButton}</div></div>
+    </header>
+    <div className="editor-layout">
+      <aside className="section-sidebar"><div className="sidebar-heading"><p className="eyebrow">{c.content}</p><span>{filled}/{sections.length}</span></div><div className="progress-track"><span style={{ width: `${filled / sections.length * 100}%` }}/></div>
+        <nav className="section-navigation" aria-label={c.content}>{sections.map((key, i) => <button key={key} onClick={() => setActive(key)} className={active === key ? 'active' : ''} aria-current={active === key ? 'step' : undefined}><span className="section-icon">{icons[i]}</span><span>{t(`builder.sections.${key}`)}</span><span className={`section-state ${sectionStatus(cv,key).state === 'filled' ? 'filled' : ''}`}>{sectionStatus(cv,key).state === 'filled' ? '✓' : String(i+1).padStart(2,'0')}</span></button>)}
+        <button className={`design-nav ${active === 'template' ? 'active' : ''}`} onClick={() => setActive('template')}><span className="section-icon">▦</span><span>{c.design}</span><span>↗</span></button></nav>
+        <div className="sidebar-bottom"><p>{c.localHint}</p><button className="btn-ghost" onClick={() => downloadConfig(cv, `${slugify(cv.personal.fullName)}-opencv.json`)}>↧ {c.backup}</button></div>
+      </aside>
+      <main className="form-pane" ref={formRef}><div className="form-heading"><div><p className="eyebrow">{active === 'template' ? c.design : `0${index + 1} / 08`}</p><h1>{t(`builder.sections.${active}`)}</h1></div><div className="history-actions"><button type="button" className="btn-ghost editor-reset" onClick={handleRestart}><span aria-hidden="true">↺</span>{t('builder.actions.clear')}</button><button className="icon-button" onClick={onUndo} disabled={!canUndo} aria-label={t('builder.actions.undo')} title={t('builder.actions.undo')}>↶</button><button className="icon-button" onClick={onRedo} disabled={!canRedo} aria-label={t('builder.actions.redo')} title={t('builder.actions.redo')}>↷</button></div></div>
+        <UploadCV hasDraft={!isCvEmpty(cv)} onLoad={next => {
+          onLoadConfig(next);
+          setActive('personal');
+          if (formRef.current) formRef.current.scrollTop = 0;
+          const preview = previewRef.current?.querySelector('.preview-scroll');
+          if (preview) preview.scrollTop = 0;
+        }} />
+        {saveError && <p role="alert" className="notice error">{c.saveError}</p>}
+        {isCvEmpty(cv) && <div className="notice"><p>{c.nameHint}</p><button className="btn-link" onClick={onLoadSample}>{c.sample} →</button></div>}
+        <div className="section-form" key={active}>
+          {active === 'template' && <TemplatePicker value={cv.template} onChange={value => patch('template', value)} />}
+          {active === 'personal' && <PersonalSection value={cv.personal} onChange={v => patch('personal',v)} accentColor={cv.accentColor} onAccentChange={v => patch('accentColor',v)} />}
+          {active === 'summary' && <SummarySection value={cv.summary} onChange={v => patch('summary',v)} />}
+          {active === 'experience' && <ExperienceSection items={cv.experience} onChange={v => patch('experience',v)} />}
+          {active === 'education' && <EducationSection items={cv.education} onChange={v => patch('education',v)} />}
+          {active === 'skills' && <SkillsSection items={cv.skills} onChange={v => patch('skills',v)} />}
+          {active === 'languages' && <LanguagesSection items={cv.languages} onChange={v => patch('languages',v)} />}
+          {active === 'projects' && <ProjectsSection items={cv.projects} onChange={v => patch('projects',v)} />}
+          {active === 'certificates' && <CertificatesSection items={cv.certificates} onChange={v => patch('certificates',v)} />}
         </div>
-
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <IconBtn onClick={onUndo} disabled={!canUndo} title={t('builder.actions.undo')}>
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg>
-          </IconBtn>
-          <IconBtn onClick={onRedo} disabled={!canRedo} title={t('builder.actions.redo')}>
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 15-6.7L21 13"/></svg>
-          </IconBtn>
-          <IconBtn onClick={handleClear} title={t('builder.actions.clear')}>
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-          </IconBtn>
-
-          <span className="mx-1 h-5 w-px bg-white/10" />
-
-          <ThemeToggle />
-
-          <LanguageSwitcher />
-
-          {/* Desktop-only cluster: separator + price caption + pay CTA. On
-              mobile the CTA lives in the sticky bottom bar, so this whole group
-              is hidden — keeping it out avoids a dangling separator in the nav
-              and frees space for the action icons. */}
-          <span className="hidden lg:block mx-1 h-5 w-px bg-white/10" />
-
-          <div className="hidden lg:block text-xs text-white/50 whitespace-nowrap">
-            {mode === 'update'
-              ? t('builder.modeUpdateCaption', { updatePrice: priceUpdate })
-              : t('builder.modeNewCaption',    { price: priceNew })}
-          </div>
-          {/* Wrapped in a div because `.btn-primary` sets `display:inline-flex`
-              outside any @layer, which beats Tailwind's layered `hidden`
-              utility — so `hidden` on the button itself wouldn't take. The
-              plain div hides cleanly. */}
-          <div className="hidden lg:block">
-            <button
-              className="btn-primary text-sm whitespace-nowrap"
-              onClick={handlePayClick}
-              disabled={BETA_PAYMENTS || paying || !isPayable}
-              title={BETA_PAYMENTS ? t('beta.badgeTitle') : (isPayable ? '' : t('builder.actions.nameRequired'))}
-            >{payLabel}</button>
-          </div>
-        </div>
-      </nav>
-
-      {!isPayable && (
-        <div className="px-4 sm:px-6 py-2 text-[12px] text-amber-200/90 bg-amber-500/10 border-b border-amber-400/15">
-          {t('builder.fillNameWarning')}{' '}
-          <button className="underline underline-offset-2" onClick={() => setActive('personal')}>{t('builder.fillNameWarningAction')}</button>{' '}
-          {t('builder.fillNameWarningTail')}
-        </div>
-      )}
-
-      {/* FIXME: TEST MODE banner — remove with BYPASS_PAYMENT_FOR_TESTING. */}
-      {BYPASS_PAYMENT_FOR_TESTING && (
-        <div className="px-4 sm:px-6 py-2 text-[12px] text-amber-100 bg-amber-600/30 border-b border-amber-400/40 text-center font-medium tracking-wide">
-          ⚠ TEST MODE — botão de pagar ignora o Stripe e descarrega directo. Lembra-te de remover antes de produção.
-        </div>
-      )}
-
-      {/* Beta banner — payments not live yet. Hidden once BETA_PAYMENTS is off. */}
-      {BETA_PAYMENTS && !BYPASS_PAYMENT_FOR_TESTING && (
-        <div className="px-4 sm:px-6 py-2 text-[12px] text-center border-b text-amber-800 bg-amber-400/15 border-amber-500/30 dark:text-amber-200/90 dark:bg-amber-500/10 dark:border-amber-400/15">
-          {t('beta.banner')}
-        </div>
-      )}
-
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-0">
-        <aside className="border-r border-white/5 p-4 sm:p-5 pb-28 lg:pb-5 space-y-4 lg:max-h-[calc(100vh-65px)] overflow-y-auto">
-          <div className="flex flex-wrap gap-1.5">
-            {SECTION_KEYS.map((key) => {
-              const st = sectionStatus(cv, key);
-              const isActive = active === key;
-              const label = t(`builder.sections.${key}` as const);
-              return (
-                <button key={key}
-                  onClick={() => setActive(key)}
-                  className={[
-                    'group inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition',
-                    isActive
-                      ? 'bg-white/10 border-white/20 text-white'
-                      : 'bg-transparent border-white/10 text-white/55 hover:text-white/85 hover:border-white/15',
-                  ].join(' ')}
-                >
-                  <span>{label}</span>
-                  {key !== 'template' && <SectionBadge state={st.state} count={st.count} />}
-                </button>
-              );
-            })}
-          </div>
-
-          {isCvEmpty(cv) && (
-            <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.02] p-3 flex items-start gap-3">
-              <div className="h-7 w-7 rounded-md bg-gradient-to-br from-brand-500/30 to-accent-500/30 border border-white/10 flex items-center justify-center text-white/80">✨</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[12.5px] text-white/80 leading-snug">{t('builder.emptyHint')}</p>
-                <button className="mt-2 text-[12px] text-brand-300 hover:text-brand-200 underline underline-offset-4" onClick={handleLoadSample}>
-                  {t('builder.emptyCta')}
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-            {active === 'template' && (
-              <TemplatePicker value={cv.template} onChange={(t2) => patch('template', t2)} />
-            )}
-            {active === 'personal' && (
-              <PersonalSection
-                value={cv.personal}
-                onChange={(p) => patch('personal', p)}
-                accentColor={cv.accentColor}
-                onAccentChange={(c) => patch('accentColor', c)}
-                nameLocked={mode === 'update'}
-              />
-            )}
-            {active === 'summary'      && <SummarySection      value={cv.summary} onChange={(s) => patch('summary', s)} />}
-            {active === 'experience'   && <ExperienceSection   items={cv.experience} onChange={(v) => patch('experience', v)} />}
-            {active === 'education'    && <EducationSection    items={cv.education}  onChange={(v) => patch('education',  v)} />}
-            {active === 'skills'       && <SkillsSection       items={cv.skills}     onChange={(v) => patch('skills',     v)} />}
-            {active === 'languages'    && <LanguagesSection    items={cv.languages}  onChange={(v) => patch('languages',  v)} />}
-            {active === 'projects'     && <ProjectsSection     items={cv.projects}   onChange={(v) => patch('projects',   v)} />}
-            {active === 'certificates' && <CertificatesSection items={cv.certificates} onChange={(v) => patch('certificates', v)} />}
-          </div>
-        </aside>
-
-        <main className="hidden lg:block p-6 lg:p-8 bg-black/20 overflow-auto max-h-[calc(100vh-65px)]">
-          <Preview cv={cv} />
-        </main>
-
-        {/* Mobile action bar — sticky to the bottom, within thumb reach.
-            Carries the two primary actions (preview + pay) that are too
-            important to bury in the crowded top nav on small screens. */}
-        <div
-          className="lg:hidden fixed bottom-0 inset-x-0 z-20 flex items-center gap-2 px-3 py-2.5 border-t border-[color:var(--color-border)] bg-[color:var(--color-surface-2)]/95 backdrop-blur"
-          style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))' }}
-        >
-          <button className="btn-ghost flex-1 text-sm" onClick={() => setPreviewOpen(true)}>
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
-            {t('builder.actions.preview')}
-          </button>
-          <button
-            className="btn-primary flex-[1.5] text-sm whitespace-nowrap"
-            onClick={handlePayClick}
-            disabled={BETA_PAYMENTS || paying || !isPayable}
-            title={BETA_PAYMENTS ? t('beta.badgeTitle') : (isPayable ? '' : t('builder.actions.nameRequired'))}
-          >{payLabel}</button>
-        </div>
-
-        <ConsentModal
-          open={consentOpen}
-          onCancel={() => setConsentOpen(false)}
-          onConfirm={() => { setConsentOpen(false); onPay(); }}
-          onNavigate={onNavigate}
-        />
-
-        {previewOpen && (
-          <div className="lg:hidden fixed inset-0 z-30 bg-black/80 backdrop-blur-sm flex flex-col">
-            <div className="px-4 py-3 flex items-center justify-between border-b border-white/10">
-              <span className="text-sm text-white/80">{t('builder.mobilePreviewLabel')}</span>
-              <button className="btn-ghost text-sm" onClick={() => setPreviewOpen(false)}>{t('common.close')} ✕</button>
-            </div>
-            <div className="flex-1 overflow-auto p-4 bg-black/40 flex justify-center">
-              <Preview cv={cv} zoom={previewZoom} />
-            </div>
-          </div>
-        )}
-      </div>
+        <div className="section-footer"><button className="btn-link" disabled={index <= 0} onClick={() => setActive(sections[index-1])}>← {c.previous}</button><button className="btn-ghost" onClick={() => setActive(active === 'template' ? 'personal' : index === sections.length-1 ? 'template' : sections[index+1])}>{active === 'template' ? t('builder.sections.personal') : index === sections.length-1 ? c.design : c.next} →</button></div>
+        <button className="btn-ghost mobile-backup" onClick={() => downloadConfig(cv, `${slugify(cv.personal.fullName)}-opencv.json`)}>↧ {c.backup}</button>
+      </main>
+      <div className="preview-pane" ref={previewRef}><div className="preview-toolbar"><div><span className="status-dot"/><strong>{c.preview}</strong><span className="preview-live">{c.live}</span></div><span className="preview-format">A4 · {TEMPLATES[cv.template].label}</span></div><div className="preview-scroll" role="region" aria-label={c.preview} tabIndex={0}><Preview cv={cv} zoom={zoom}/><p className="preview-footnote">{c.previewHint}</p></div></div>
     </div>
-  );
-}
-
-function IconBtn({ onClick, disabled, title, children, extraClass = '' }: {
-  onClick: () => void;
-  disabled?: boolean;
-  title: string;
-  children: ReactNode;
-  extraClass?: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      aria-label={title}
-      className={[
-        'inline-flex items-center justify-center h-8 w-8 rounded-md border transition',
-        disabled
-          ? 'border-white/5 text-white/25 cursor-not-allowed'
-          : 'border-white/10 text-white/75 hover:text-white hover:bg-white/5 hover:border-white/20',
-        extraClass,
-      ].join(' ')}
-    >{children}</button>
-  );
-}
-
-function SectionBadge({ state, count }: { state: 'filled' | 'empty'; count: number }) {
-  if (state === 'filled' && count > 0) {
-    return (
-      <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-emerald-400/15 text-emerald-300 text-[10px] font-semibold">
-        {count}
-      </span>
-    );
-  }
-  if (state === 'filled') return <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />;
-  return <span className="h-1.5 w-1.5 rounded-full bg-white/15" />;
-}
-
-function SaveIndicator({ saving, t }: { saving: boolean; t: (k: 'common.saving' | 'common.saved') => string }) {
-  return (
-    <span
-      className="hidden sm:inline-flex items-center gap-1.5 text-[11px] text-white/45"
-      title="Os teus dados são guardados localmente no browser"
-    >
-      <span
-        className={[
-          'h-1.5 w-1.5 rounded-full transition-colors',
-          saving ? 'bg-amber-300 animate-pulse' : 'bg-emerald-400',
-        ].join(' ')}
-        aria-live="polite"
-      />
-      {saving ? t('common.saving') : t('common.saved')}
-    </span>
-  );
+    <div className="mobile-editor-bar"><button className="btn-ghost" onClick={() => setPreviewOpen(true)}>{c.preview} ↗</button>{downloadButton}</div>
+    <dialog ref={dialogRef} className="preview-dialog" onCancel={() => setPreviewOpen(false)} onClose={() => setPreviewOpen(false)}><div className="dialog-toolbar"><strong>{c.preview}</strong><button className="btn-ghost" onClick={() => setPreviewOpen(false)}>{c.close} ×</button></div><div className="dialog-preview"><Preview cv={cv} zoom={Math.min(.8, (window.innerWidth-48)/794)} /></div></dialog>
+  </div>;
 }

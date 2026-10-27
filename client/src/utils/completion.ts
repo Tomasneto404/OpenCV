@@ -43,13 +43,13 @@ export function sectionStatus(cv: CVData, key: SectionKey): SectionStatus {
 /** Returns how "empty" the CV is — true when only the default template/colour are set. */
 export function isCvEmpty(cv: CVData): boolean {
   return (
-    cv.personal.fullName.trim() === '' &&
-    cv.personal.email.trim() === '' &&
+    Object.values(cv.personal).every(value => !value?.trim()) &&
     cv.summary.trim() === '' &&
     cv.experience.length === 0 &&
     cv.education.length === 0 &&
     cv.skills.length === 0 &&
     cv.languages.length === 0 &&
-    cv.projects.length === 0
+    cv.projects.length === 0 &&
+    (cv.certificates?.length ?? 0) === 0
   );
 }

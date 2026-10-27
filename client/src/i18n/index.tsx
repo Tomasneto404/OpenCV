@@ -43,11 +43,12 @@ export const SUPPORTED_LOCALES: { code: Locale; label: string; native: string }[
   { code: 'de', label: 'German',     native: 'Deutsch' },
 ];
 
-const STORAGE_KEY = 'cveaver:locale';
+const STORAGE_KEY = 'opencv:locale';
 
 function detectInitialLocale(): Locale {
   if (typeof window === 'undefined') return 'pt';
-  const stored = window.localStorage.getItem(STORAGE_KEY) as Locale | null;
+  let stored: Locale | null = null;
+  try { stored = (window.localStorage.getItem(STORAGE_KEY) ?? window.localStorage.getItem('cveaver:locale')) as Locale | null; } catch { /* unavailable storage */ }
   if (stored && DICTIONARIES[stored]) return stored;
   const browser = (navigator.language || 'pt').toLowerCase().slice(0, 2);
   return (DICTIONARIES[browser as Locale] ? (browser as Locale) : 'pt');

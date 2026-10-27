@@ -1,26 +1,3 @@
-/**
- * Live preview rendered while the user edits, and on the Paid screen
- * after payment.
- *
- * Composition:
- *   1. CV template, paginated across N A4 sheets via <PaginatedCanvas/>.
- *      The template renders once, intrinsic height is measured in a hidden
- *      layer, then a stack of A4-shaped frames "slices" that single
- *      render via overflow:hidden + negative marginTop on each frame.
- *      The user sees N separate sheets with gaps, matching the eventual
- *      PDF output.
- *   2. One "framed certificate" preview page per attached certificate.
- *      Each cert is already exactly one A4 page, so they sit beside the
- *      paginated stack without their own pagination logic.
- *
- * Capture deterrents: no right-click, no text selection, no image drag.
- * Watermark on top while in builder/unpaid mode. None of this is real
- * security — the only paywall is /pdf/:sessionId server-side.
- *
- * Sizing: each "page" is 794 × 1123 px (A4 @ 96 dpi). Uses CSS `zoom`
- * (via .cv-page in index.css) so the layout footprint shrinks at smaller
- * viewports — no phantom horizontal scroll.
- */
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { CVData, CertificateItem, TemplateId } from '../types';
 import { TEMPLATES } from '../templates';
@@ -38,14 +15,13 @@ const PAGE_GAP = 24;
 
 interface Props {
   cv: CVData;
-  paid?: boolean;
   /** Overrides the responsive CSS `zoom` on each page (inline beats the
    *  stylesheet). Used by the mobile preview modal to fit the page to the
    *  viewport width exactly. Omit to keep the .cv-page breakpoint zoom. */
   zoom?: number;
 }
 
-export function Preview({ cv, paid = false, zoom }: Props) {
+export function Preview({ cv, zoom }: Props) {
   const entry = TEMPLATES[cv.template] ?? TEMPLATES.modern;
   const Template = entry.component;
   const certs = cv.certificates ?? [];
@@ -53,7 +29,6 @@ export function Preview({ cv, paid = false, zoom }: Props) {
   return (
     <div className="flex flex-col items-center gap-6">
       <PaginatedCanvas
-        paid={paid}
         zoom={zoom}
         sidebarEnd={entry.sidebarEnd ?? 0}
         surfaceBg={entry.surfaceBg ?? '#ffffff'}
@@ -68,8 +43,7 @@ export function Preview({ cv, paid = false, zoom }: Props) {
           cert={c}
           template={cv.template}
           accent={cv.accentColor || '#98641f'}
-          paid={paid}
-          zoom={zoom}
+            zoom={zoom}
         />
       ))}
     </div>
@@ -165,10 +139,9 @@ function computeBreaks(contentH: number, intervals: [number, number][]): number[
  * entire multi-page span; the accent then reaches the bottom of every sheet.
  */
 function PaginatedCanvas({
-  children, paid, zoom, sidebarEnd = 0, surfaceBg = '#ffffff', accent = '#6366f1',
+  children, zoom, sidebarEnd = 0, surfaceBg = '#ffffff', accent = '#6366f1',
 }: {
   children: ReactNode;
-  paid?: boolean;
   zoom?: number;
   sidebarEnd?: number;
   surfaceBg?: string;
@@ -223,20 +196,25 @@ function PaginatedCanvas({
           OUTSIDE the zoomed .cv-page so CSS `zoom` never scales the measured
           line rects (getClientRects is zoom-sensitive, scrollHeight is not —
           measuring here keeps both in the same unscaled coordinate space).
-          No `--cv-stack-h`, so cv-surface keeps its natural content height. */}
+          No `--cv-stack-h`, so cv-surface keeps its natural content height.
+          A zero-size clipped wrapper prevents the unscaled measurement copy
+          from extending the scroll area beyond the visible, zoomed pages. */}
       <div
-        ref={measureRef}
         aria-hidden="true"
         style={{
-          width: PAGE_W,
+          width: 0,
+          height: 0,
+          overflow: 'hidden',
           position: 'absolute',
-          left: -99999,
+          left: 0,
           top: 0,
           visibility: 'hidden',
           pointerEvents: 'none',
         }}
       >
-        {children}
+        <div ref={measureRef} style={{ width: PAGE_W }}>
+          {children}
+        </div>
       </div>
 
       <div className="cv-page flex flex-col items-center" style={{ ...zoomStyle, gap: PAGE_GAP }}>
@@ -250,9 +228,7 @@ function PaginatedCanvas({
             <div
               key={i}
               className="cv-page-frame"
-              onContextMenu={(e) => e.preventDefault()}
-              onDragStart={(e) => e.preventDefault()}
-              style={{ background: surfaceBg, userSelect: 'none', WebkitUserSelect: 'none' }}
+              style={{ background: surfaceBg }}
             >
               {/* Inner wrapper: positions the slice and publishes --cv-stack-h
                   so the template's full-bleed background fills the whole stack. */}
@@ -272,7 +248,6 @@ function PaginatedCanvas({
                   the page's trailing whitespace (sidebar accent + surface).
                   Skipped on the last page (content simply ends there). */}
               {i < pageCount - 1 && <Strip top={contentBottom} height={PAGE_H - contentBottom} />}
-              {!paid && <WatermarkOverlay />}
             </div>
           );
         })}
@@ -285,8 +260,8 @@ function PaginatedCanvas({
    `framed === false` falls back to a bare 1:1 thumbnail centred in a
    white page. Otherwise the layout is picked by template. */
 function CertificatePagePreview({
-  cert, template, accent, paid, zoom,
-}: { cert: CertificateItem; template: TemplateId; accent: string; paid?: boolean; zoom?: number }) {
+  cert, template, accent, zoom,
+}: { cert: CertificateItem; template: TemplateId; accent: string; zoom?: number }) {
   const [thumb, setThumb] = useState<string | null>(null);
   const [busy,  setBusy]  = useState(true);
 
@@ -311,14 +286,11 @@ function CertificatePagePreview({
     >
       <div
         className="cv-page-frame"
-        onContextMenu={(e) => e.preventDefault()}
-        onDragStart={(e) => e.preventDefault()}
-        style={{ color: '#1a1410', userSelect: 'none', WebkitUserSelect: 'none' }}
+        style={{ color: '#1a1410' }}
       >
         {!framed
           ? <BareFrame thumb={thumb} busy={busy} />
           : <TemplateFrame template={template} cert={cert} accent={accent} thumb={thumb} busy={busy} />}
-        {!paid && <WatermarkOverlay />}
       </div>
     </div>
   );
@@ -371,11 +343,14 @@ function BareFrame({ thumb, busy }: { thumb: string | null; busy: boolean }) {
 function TemplateFrame({ template, cert, accent, thumb, busy }: FrameProps & { template: TemplateId }) {
   switch (template) {
     case 'classic':   return <ClassicFrame   cert={cert} accent={accent} thumb={thumb} busy={busy} />;
+    case 'compact':
+    case 'studio':
+    case 'technical':
+    case 'academic':
     case 'minimal':   return <MinimalFrame   cert={cert} accent={accent} thumb={thumb} busy={busy} />;
     case 'creative':  return <CreativeFrame  cert={cert} accent={accent} thumb={thumb} busy={busy} />;
     case 'executive': return <ExecutiveFrame cert={cert} accent={accent} thumb={thumb} busy={busy} />;
     case 'modern':
-    case 'compact':
     default:          return <ModernFrame    cert={cert} accent={accent} thumb={thumb} busy={busy} />;
   }
 }
@@ -399,7 +374,7 @@ function ModernFrame({ cert, accent, thumb, busy }: FrameProps) {
           <p style={{ fontSize: 11, marginTop: 10, opacity: 0.85, lineHeight: 1.45 }}>{cert.description}</p>
         )}
         <div style={{ marginTop: 'auto', fontSize: 10, opacity: 0.7, position: 'absolute', bottom: 24, left: 18, right: 18 }}>
-          <p style={{ margin: 0 }}>CVeaver</p>
+          <p style={{ margin: 0 }}>OpenCV</p>
           <p style={{ margin: '2px 0 0 0' }}>{cert.pageCount} {cert.pageCount === 1 ? 'pág.' : 'págs.'}</p>
         </div>
       </aside>
@@ -438,7 +413,7 @@ function ClassicFrame({ cert, accent, thumb, busy }: FrameProps) {
         textAlign: 'center', fontSize: 10, color: '#806743',
         fontFamily: '"Fraunces", Georgia, serif',
       }}>
-        cveaver.com · {cert.pageCount} {cert.pageCount === 1 ? 'pág.' : 'págs.'}
+        OpenCV · {cert.pageCount} {cert.pageCount === 1 ? 'pág.' : 'págs.'}
       </footer>
     </>
   );
@@ -476,7 +451,7 @@ function MinimalFrame({ cert, accent, thumb, busy }: FrameProps) {
         fontSize: 10, color: '#806743',
         fontFamily: 'Inter, sans-serif',
       }}>
-        <span>cveaver.com</span>
+        <span>OpenCV</span>
         <span>{cert.pageCount} {cert.pageCount === 1 ? 'pág.' : 'págs.'}</span>
       </footer>
     </>
@@ -513,7 +488,7 @@ function CreativeFrame({ cert, accent, thumb, busy }: FrameProps) {
         fontSize: 10, fontWeight: 600,
         fontFamily: 'Inter, sans-serif',
       }}>
-        <span>cveaver.com</span>
+        <span>OpenCV</span>
         <span>{cert.pageCount} {cert.pageCount === 1 ? 'pág.' : 'págs.'}</span>
       </footer>
     </>
@@ -550,45 +525,9 @@ function ExecutiveFrame({ cert, accent, thumb, busy }: FrameProps) {
         <div style={{ borderTop: `0.7px solid ${accent}`, opacity: 0.65, marginBottom: 4 }} />
         <div style={{ borderTop: `2px solid ${accent}`, marginBottom: 10 }} />
         <p style={{ fontSize: 10, color: '#806743', margin: 0 }}>
-          cveaver.com · {cert.pageCount} {cert.pageCount === 1 ? 'pág.' : 'págs.'}
+          OpenCV · {cert.pageCount} {cert.pageCount === 1 ? 'pág.' : 'págs.'}
         </p>
       </footer>
     </>
-  );
-}
-
-/* ── Watermark ───────────────────────────────────────────────────────── */
-function WatermarkOverlay() {
-  return (
-    <svg
-      className="absolute inset-0 w-full h-full pointer-events-none select-none"
-      style={{ zIndex: 2 }}
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <defs>
-        <pattern id="cveaver-watermark" x="0" y="0" width="280" height="160" patternUnits="userSpaceOnUse" patternTransform="rotate(-28)">
-          <text x="0" y="40"
-            fontFamily="Inter, system-ui, sans-serif"
-            fontSize="22"
-            fontWeight="700"
-            fill="rgba(152, 100, 31, 0.22)"
-            letterSpacing="6"
-          >
-            CVeaver · PREVIEW
-          </text>
-          <text x="40" y="110"
-            fontFamily="Inter, system-ui, sans-serif"
-            fontSize="14"
-            fontWeight="500"
-            fill="rgba(83, 138, 76, 0.20)"
-            letterSpacing="4"
-          >
-            NOT PAID · cveaver.com
-          </text>
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#cveaver-watermark)" />
-    </svg>
   );
 }

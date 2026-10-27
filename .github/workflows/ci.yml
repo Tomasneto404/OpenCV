@@ -4,10 +4,14 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  client:
-    name: Client typecheck + build
+  checks:
+    name: Typecheck, build and unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,54 +19,66 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: client/package-lock.json
-      - run: npm ci
-        working-directory: client
-      - run: npm run build # tsc -b (typecheck) && vite build
-        working-directory: client
-        env:
-          VITE_API_URL: https://api.cveaver.com
-          VITE_STRIPE_PUBLISHABLE_KEY: pk_test_ci_placeholder
-
-  server:
-    name: Server tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: server/package-lock.json
-      - run: npm ci
-        working-directory: server
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+      - run: npm ci --prefix client
+      - run: npm ci --prefix server
+      - run: npm run build
       - run: npm test
-        working-directory: server
 
-  compose:
-    name: docker compose config
+  browser:
+    name: Browser tests against Docker
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Validate compose file
-        run: docker compose config -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: docker compose config -q
+      - run: docker compose -p opencv-ci up -d --build --wait --wait-timeout 120
+      - name: Test desktop and mobile through nginx and the real API
+        run: npm run test:e2e
         env:
-          # Dummy values just to satisfy the `:?` required-var checks.
-          DOMAIN: cveaver.com
-          ACME_EMAIL: ci@cveaver.com
-          STRIPE_SECRET_KEY: sk_test_ci
+          E2E_BASE_URL: http://localhost:8080
+      - name: Container logs
+        if: failure()
+        run: docker compose -p opencv-ci logs --no-color
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failures
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+      - name: Stop test stack
+        if: always()
+        run: docker compose -p opencv-ci down -v
 
   secrets:
-    name: Secret scan (gitleaks)
+    name: Secret scan
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read # gitleaks lists PR commits on pull_request events
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # Free for personal accounts; orgs need GITLEAKS_LICENSE.
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    name: Publish validated images
+    needs: [checks, browser, secrets]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/release.yml

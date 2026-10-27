@@ -64,7 +64,7 @@ export function ExecutivePdf({ cv }: Props) {
   const L = labelsFor(cv.locale).sections;
 
   return (
-    <Document title={p.fullName || 'CV'} author={p.fullName} producer="CVeaver">
+    <Document title={p.fullName || 'CV'} author={p.fullName} producer="OpenCV">
       <Page size="A4" style={s.page} wrap>
         <View style={s.headerWrap}>
           <View style={s.headerRules}>

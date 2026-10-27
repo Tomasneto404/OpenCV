@@ -1,23 +1,6 @@
-/**
- * Symmetric encryption for the payload embedded in the generated PDF.
- *
- * Why: the PDF carries a JSON blob with the user's CV + metadata so the
- * update flow can recover it. From Sessão 22, that blob is encrypted with
- * a server-only AES-256-GCM key — the client never sees the plaintext for
- * anything except its own data (returned via /decode-pdf after server
- * decrypts). Two reasons:
- *
- *   1. Casual snoopers opening the PDF in Acrobat / Preview don't see a
- *      readable JSON config (the attachment is now called cveaver.dat and
- *      contains opaque bytes).
- *   2. The editCount + meta is tamper-evident: only the server can produce
- *      a valid cveaver.dat, so a forged PDF can't claim a higher rank.
- *
- * Key management mirrors sign.js: stored in $SIGN_KEY_DIR/aes.key as 32
- * random bytes; generated on first boot; gitignored.
- *
- * IMPORTANT: backing up server/keys/ is critical. If the key is lost, ALL
- * previously generated PDFs become un-decryptable. There is no recovery.
+import './env.js';
+/** AES-256-GCM for the editable payload inside exported PDFs.
+ * Keep server/keys (or SIGN_KEY_DIR) backed up to reopen existing PDFs.
  */
 import { randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';

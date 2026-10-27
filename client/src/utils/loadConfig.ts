@@ -1,23 +1,12 @@
-/**
- * Load a CV from an uploaded file (JSON or PDF) so the user can edit it.
- *
- * Sessão 22 moved the heavy lifting server-side: a PDF's payload is
- * encrypted, so the client can't extract it on its own. Instead we POST
- * the PDF bytes to /decode-pdf and trust the server's answer.
- */
-import type { CVData, CVMeta } from '../types';
+import type { CVData } from '../types';
 
-const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3001';
+import { API_URL } from '../api';
+import { normalizeCV } from '../../../shared/normalizeCV';
 
 export interface LoadedConfig {
   cv: CVData;
   source: 'json' | 'pdf';
-  /** Server-tagged true only when an uploaded PDF passed integrity check. */
   verified?: boolean;
-  meta?: CVMeta;
-  /** Opaque ciphertext to pass back to /cv when saving the update draft —
-   *  preserves editCount/createdAt across the round trip. */
-  prevPayloadB64?: string;
 }
 
 export type ConfigLoadErrorCode = 'bad-json' | 'bad-pdf' | 'no-payload' | 'wrong-version' | 'unknown-type';
@@ -30,11 +19,8 @@ export class ConfigLoadError extends Error {
   }
 }
 
-function isCV(v: unknown): v is CVData {
-  return !!v && typeof v === 'object' && (v as { version?: unknown }).version === 1;
-}
-
 export async function loadConfigFromFile(file: File): Promise<LoadedConfig> {
+  if (file.size > 80 * 1024 * 1024) throw new ConfigLoadError('bad-pdf', 'O ficheiro excede 80 MB.');
   const name = file.name.toLowerCase();
   const isPdf  = file.type === 'application/pdf' || name.endsWith('.pdf');
   const isJson = file.type === 'application/json' || name.endsWith('.json');
@@ -44,8 +30,9 @@ export async function loadConfigFromFile(file: File): Promise<LoadedConfig> {
     let parsed: unknown;
     try { parsed = JSON.parse(text); }
     catch { throw new ConfigLoadError('bad-json', 'JSON inválido.'); }
-    if (!isCV(parsed)) throw new ConfigLoadError('wrong-version', 'Versão de configuração não suportada.');
-    return { cv: parsed, source: 'json', verified: true };
+    const cv = normalizeCV(parsed);
+    if (!cv) throw new ConfigLoadError('wrong-version', 'Versão de configuração não suportada.');
+    return { cv, source: 'json', verified: false };
   }
 
   if (isPdf) {
@@ -62,14 +49,13 @@ export async function loadConfigFromFile(file: File): Promise<LoadedConfig> {
     }
     if (res.status === 422) throw new ConfigLoadError('no-payload', 'Este PDF não é reconhecido.');
     if (!res.ok) throw new ConfigLoadError('bad-pdf', `Servidor devolveu ${res.status}.`);
-    const body = await res.json() as { cv: unknown; meta?: CVMeta; verified?: boolean; prevPayloadB64?: string };
-    if (!isCV(body.cv)) throw new ConfigLoadError('wrong-version', 'Configuração não suportada.');
+    const body = await res.json() as { cv: unknown; verified?: boolean; prevPayloadB64?: string };
+    const cv = normalizeCV(body.cv);
+    if (!cv) throw new ConfigLoadError('wrong-version', 'Configuração não suportada.');
     return {
-      cv: body.cv,
+      cv,
       source: 'pdf',
       verified: Boolean(body.verified),
-      meta: body.meta,
-      prevPayloadB64: body.prevPayloadB64,
     };
   }
 

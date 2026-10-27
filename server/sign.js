@@ -1,3 +1,4 @@
+import './env.js';
 import { generateKeyPairSync, sign, verify, createHash, createPrivateKey, createPublicKey } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';

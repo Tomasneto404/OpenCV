@@ -107,7 +107,7 @@ export function ModernPdf({ cv }: Props) {
   const CL  = L.contactLabels;
 
   return (
-    <Document title={p.fullName || 'CV'} author={p.fullName} producer="CVeaver">
+    <Document title={p.fullName || 'CV'} author={p.fullName} producer="OpenCV">
       <Page size="A4" style={s.page} wrap>
         {/* Accent stripe — repeats on every page (just the colour) */}
         <View style={s.sidebarBg} fixed />

@@ -12,7 +12,7 @@
  *   - redactEmail() — partial mask for logs (A09).
  */
 import { randomBytes } from 'node:crypto';
-import type { CVData, CertificateItem } from './types.js';
+import type { CertificateItem } from './types.js';
 
 /** 128 bits of entropy as 32-char hex. Practically un-guessable. */
 export function randomId(): string {
@@ -31,69 +31,7 @@ export function isHexColor(v: unknown): v is string {
  *  schema validator — pdf-lib + react-pdf are forgiving enough that
  *  loose CV objects render gracefully, but we want to catch the obvious
  *  injection / DoS shapes. */
-export function validateCV(input: unknown): CVData | null {
-  if (!input || typeof input !== 'object') return null;
-  const cv = input as Record<string, unknown>;
-
-  if (cv.version !== 1) return null;
-  if (typeof cv.template !== 'string') return null;
-  const allowedTemplates = ['modern', 'classic', 'minimal', 'creative', 'executive', 'compact'];
-  if (!allowedTemplates.includes(cv.template)) return null;
-
-  // accentColor must be a hex literal — anything else and we refuse so
-  // it never reaches drawText / Stylesheet via accent prop.
-  if (cv.accentColor !== undefined && !isHexColor(cv.accentColor)) return null;
-
-  if (!cv.personal || typeof cv.personal !== 'object') return null;
-  const p = cv.personal as Record<string, unknown>;
-  const personalFields = ['fullName', 'headline', 'email', 'phone', 'location', 'website', 'linkedin', 'github'];
-  for (const f of personalFields) {
-    if (p[f] !== undefined && typeof p[f] !== 'string') return null;
-    if (typeof p[f] === 'string' && (p[f] as string).length > 512) return null;
-  }
-  // photoDataUrl can be a long base64 — cap at ~6 MB string (≈4.5 MB raw)
-  if (p.photoDataUrl !== undefined) {
-    if (typeof p.photoDataUrl !== 'string') return null;
-    if (!(p.photoDataUrl as string).startsWith('data:image/')) return null;
-    if ((p.photoDataUrl as string).length > 6 * 1024 * 1024) return null;
-  }
-
-  // Arrays — sanity-check length so a 10 000-item array can't OOM us.
-  const arrayFields: Array<[string, number]> = [
-    ['experience', 50], ['education', 20], ['skills', 50],
-    ['languages', 30], ['projects', 50], ['certificates', 50],
-  ];
-  for (const [field, max] of arrayFields) {
-    const v = cv[field];
-    if (v !== undefined && !Array.isArray(v)) return null;
-    if (Array.isArray(v) && v.length > max) return null;
-  }
-
-  // Certificates: each must look like a PDF data URL with sane size.
-  if (Array.isArray(cv.certificates)) {
-    for (const c of cv.certificates as unknown[]) {
-      if (!c || typeof c !== 'object') return null;
-      const cert = c as Record<string, unknown>;
-      if (typeof cert.pdfDataUrl !== 'string') return null;
-      if (!cert.pdfDataUrl.startsWith('data:application/pdf')) return null;
-      // 15 MB per cert hard ceiling (slightly above the UI's 10 MB) so
-      // legit certs at the edge still pass.
-      if (cert.pdfDataUrl.length > 15 * 1024 * 1024) return null;
-      if (typeof cert.name !== 'string' || cert.name.length > 256) return null;
-    }
-  }
-
-  if (cv.summary !== undefined && typeof cv.summary !== 'string') return null;
-  if (typeof cv.summary === 'string' && cv.summary.length > 4096) return null;
-
-  // Locale must be one of the supported codes if present.
-  if (cv.locale !== undefined) {
-    if (typeof cv.locale !== 'string') return null;
-    if (!['pt', 'en', 'es', 'fr', 'de'].includes(cv.locale)) return null;
-  }
-
-  return cv as unknown as CVData;
-}
+export { normalizeCV as validateCV } from '../shared/normalizeCV.ts';
 
 /** Make a string safe to put inside a Content-Disposition filename="..."
  *  value. Strips quotes, control chars, slashes, and non-ASCII. */
@@ -133,8 +71,7 @@ export function withinCertSizeCap(certs: CertificateItem[] | undefined, capBytes
   if (!certs) return true;
   let total = 0;
   for (const c of certs) {
-    if (typeof c.bytes === 'number') total += c.bytes;
-    else total += (c.pdfDataUrl?.length ?? 0) * 0.75; // base64 → raw approx
+    total += (c.pdfDataUrl?.split(',')[1]?.length ?? 0) * 0.75; // base64 → raw approx
     if (total > capBytes) return false;
   }
   return true;

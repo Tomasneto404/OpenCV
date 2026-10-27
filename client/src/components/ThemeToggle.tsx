@@ -3,7 +3,7 @@
  *
  * The theme attribute is set on <html> very early by an inline script in
  * index.html (avoids FOUC). This component only flips it at runtime and
- * persists the choice to localStorage('cveaver:theme'). When the user has
+ * persists the choice to localStorage('opencv:theme'). When the user has
  * never chosen, the inline script falls back to prefers-color-scheme.
  */
 import { useEffect, useState } from 'react';
@@ -20,7 +20,7 @@ export function ThemeToggle() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    try { localStorage.setItem('cveaver:theme', theme); } catch { /* quota */ }
+    try { localStorage.setItem('opencv:theme', theme); } catch { /* quota */ }
   }, [theme]);
 
   const next: Theme = theme === 'dark' ? 'light' : 'dark';

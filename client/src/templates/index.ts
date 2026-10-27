@@ -16,7 +16,7 @@ import { ClassicTemplate } from './Classic';
 import { MinimalTemplate } from './Minimal';
 import { CreativeTemplate } from './Creative';
 import { ExecutiveTemplate } from './Executive';
-import { CompactTemplate } from './Compact';
+import { EditorialTemplate } from './Editorial';
 
 interface TemplateEntry {
   id: TemplateId;
@@ -82,8 +82,11 @@ export const TEMPLATES: Record<TemplateId, TemplateEntry> = {
   compact: {
     id: 'compact',
     label: 'Compact',
-    description: 'Single-page denso. Em breve.',
-    component: CompactTemplate,
-    available: false,
+    description: 'Compact layout',
+    component: EditorialTemplate,
+    available: true,
   },
+  studio: { id: 'studio', label: 'Studio', description: 'Editorial', component: EditorialTemplate, available: true },
+  technical: { id: 'technical', label: 'Technical', description: 'Technical', component: EditorialTemplate, available: true },
+  academic: { id: 'academic', label: 'Academic', description: 'Academic', component: EditorialTemplate, available: true },
 };

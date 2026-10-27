@@ -50,7 +50,7 @@ export function MinimalPdf({ cv }: Props) {
   const L = labelsFor(cv.locale).sections;
 
   return (
-    <Document title={p.fullName || 'CV'} author={p.fullName} producer="CVeaver">
+    <Document title={p.fullName || 'CV'} author={p.fullName} producer="OpenCV">
       <Page size="A4" style={s.page} wrap>
         <View style={s.header}>
           <Text style={s.name}>{p.fullName || 'O teu nome'}</Text>
@@ -122,7 +122,7 @@ export function MinimalPdf({ cv }: Props) {
 
         {(cv.skills.length > 0 || cv.languages.length > 0) && (
           <View style={s.block}>
-            <Text style={s.blockTitle}>DETALHES</Text>
+            <Text style={s.blockTitle}>{[cv.skills.length > 0 ? L.skills : '', cv.languages.length > 0 ? L.languages : ''].filter(Boolean).join(' · ').toUpperCase()}</Text>
             <View style={s.detailsRow}>
               {cv.skills.length > 0 && (
                 <View style={s.detailsCol}>

@@ -130,7 +130,7 @@ export function MinimalTemplate({ cv }: Props) {
       )}
 
       {(cv.skills.length > 0 || cv.languages.length > 0) && (
-        <Block title="Detalhes" accent={accent}>
+        <Block title={[cv.skills.length > 0 ? SEC.skills : '', cv.languages.length > 0 ? SEC.languages : ''].filter(Boolean).join(' · ')} accent={accent}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 22 }}>
             {cv.skills.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

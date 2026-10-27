@@ -32,7 +32,7 @@ export async function readPayloadFromPdf(input: Buffer): Promise<EmbedPayloadV2 
       nameObj instanceof PDFString    ? nameObj.decodeText() :
       String(nameObj);
 
-    if (nameStr !== ATTACHMENT_NAME) continue;
+    if (![ATTACHMENT_NAME, 'opencv.dat'].includes(nameStr)) continue;
 
     const fileSpec = namesArr.lookup(i + 1, PDFDict);
     const ef = fileSpec.lookup(PDFName.of('EF'), PDFDict);

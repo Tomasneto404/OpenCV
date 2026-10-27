@@ -3,7 +3,7 @@
  *
  * Lets the user attach PDFs (10 MB each, 50 MB combined, no count limit)
  * which the server appends to the generated CV PDF. By default each
- * certificate is embedded inside a CVeaver-branded "frame" page (name +
+ * certificate is embedded inside a OpenCV-branded "frame" page (name +
  * description + accent color + page indicator). The user can toggle the
  * frame off per-item to fall back to a raw copy of the source page.
  *

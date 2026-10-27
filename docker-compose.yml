@@ -1,198 +1,30 @@
-# =============================================================================
-# CVeaver production stack
-# -----------------------------------------------------------------------------
-# Two app services (server, client) behind Traefik for routing + TLS.
-# Traefik handles:
-#   - HTTP → HTTPS redirect (port 80 → 443)
-#   - Automatic Let's Encrypt certificates (TLS-ALPN-01 challenge)
-#   - www.cveaver.com → cveaver.com 301 redirect
-#   - Optional dashboard at traefik.${DOMAIN} (basic-auth protected)
-#
-# Required env (see .env.example):
-#   DOMAIN, ACME_EMAIL, TRAEFIK_DASHBOARD_AUTH (htpasswd format, $ escaped)
-#   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, VITE_STRIPE_PUBLISHABLE_KEY
-#   RESEND_API_KEY, RESEND_FROM
-#
-# Persistence — bind mounts under ./data (relative to this file). Owned by the
-# server's runtime user (uid 1001); create + chown before first `up`:
-#   mkdir -p data/keys data/store data/letsencrypt
-#   chown -R 1001:1001 data/keys data/store      # data/letsencrypt stays root (traefik)
-#
-#   ./data/keys        — Ed25519 + AES keys. **Backup is critical.** Losing it
-#                        makes every previously generated PDF impossible to
-#                        decode for the update flow.
-#   ./data/store       — draft CVs + complaints (TTL 24h on drafts).
-#   ./data/letsencrypt — Let's Encrypt cert store. Keep backed up.
-# =============================================================================
-
+name: opencv
 services:
-
-  # Rewrites the Docker API version so Traefik (client 1.24) can talk to a
-  # modern daemon (Engine 29+ rejects API < 1.40). See deploy/docker-proxy.conf.
-  dockerproxy:
-    image: nginx:1.27-alpine
-    container_name: cveaver-dockerproxy
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./deploy/docker-proxy.conf:/etc/nginx/nginx.conf:ro
-    networks:
-      - traefik
-
-  traefik:
-    image: traefik:v3.3
-    container_name: traefik
-    restart: unless-stopped
-    depends_on:
-      - dockerproxy
-    command:
-      # Providers — talk to the daemon through dockerproxy (API version rewrite),
-      # not the raw socket, so Docker 29+ (min API 1.40) doesn't reject Traefik.
-      - --providers.docker=true
-      - --providers.docker.endpoint=tcp://dockerproxy:2375
-      - --providers.docker.exposedbydefault=false
-      - --providers.docker.network=traefik
-      # Entrypoints
-      - --entrypoints.web.address=:80
-      - --entrypoints.web.http.redirections.entrypoint.to=websecure
-      - --entrypoints.web.http.redirections.entrypoint.scheme=https
-      - --entrypoints.websecure.address=:443
-      - --entrypoints.websecure.http.tls.certresolver=le
-      # ACME (Let's Encrypt) — TLS-ALPN-01 needs port 443 open, no DNS config
-      - --certificatesresolvers.le.acme.email=${ACME_EMAIL:?ACME_EMAIL is required}
-      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
-      - --certificatesresolvers.le.acme.tlschallenge=true
-      # Dashboard (protected via basic-auth — see labels)
-      - --api.dashboard=true
-      # Logs — tighten to INFO in prod
-      - --log.level=INFO
-      - --accesslog=true
-      - --accesslog.format=common
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./data/letsencrypt:/letsencrypt
-    networks:
-      - traefik
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.dashboard.rule=Host(`traefik.${DOMAIN:?DOMAIN is required}`)
-      - traefik.http.routers.dashboard.entrypoints=websecure
-      - traefik.http.routers.dashboard.tls.certresolver=le
-      - traefik.http.routers.dashboard.service=api@internal
-      - traefik.http.routers.dashboard.middlewares=dashboard-auth
-      # TRAEFIK_DASHBOARD_AUTH = htpasswd entry, with $ doubled for compose.
-      # Generate: htpasswd -nb admin yourpassword | sed 's/\$/\$\$/g'
-      - traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH:-}
-
   server:
     build:
-      context: ./server
-    image: ghcr.io/tomasneto404/cveaver-server:latest
-    container_name: cveaver-server
+      context: .
+      dockerfile: server/Dockerfile
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      HOST: 0.0.0.0
       PORT: 3001
-      DATA_DIR: /app/data
-      SIGN_KEY_DIR: /app/keys
-      CLIENT_URL: https://${DOMAIN}
-      # Stripe
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?STRIPE_SECRET_KEY is required}
-      # Webhook signing secret — required to fulfil async payments (Multibanco/MB WAY).
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      # Empty → Dynamic Payment Methods (controlled in the Stripe Dashboard).
-      STRIPE_PAYMENT_METHODS: ${STRIPE_PAYMENT_METHODS:-}
-      # Beta gate — when not 'false', PDF generation is fully disabled (no
-      # checkout / paywall / email). Mirror the client's BETA_PAYMENTS flag.
-      BETA_MODE: ${BETA_MODE:-true}
-      # Resend (email delivery)
-      RESEND_API_KEY: ${RESEND_API_KEY:-}
-      RESEND_FROM: ${RESEND_FROM:-CVeaver <noreply@cveaver.com>}
-      # Owner sale notifications (Telegram). Both empty → silent no-op.
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
-      # Include customer email in the ping: off (default) | domain | full.
-      NOTIFY_INCLUDE_EMAIL: ${NOTIFY_INCLUDE_EMAIL:-off}
-      # PDF tuning
-      PDF_CONCURRENCY: ${PDF_CONCURRENCY:-4}
-      # Optional: override the AES key (useful for multi-replica). When
-      # unset the key is generated on first boot inside cveaver-keys.
-      PAYLOAD_AES_KEY_B64: ${PAYLOAD_AES_KEY_B64:-}
-    # Bind mounts under ./data (relative to this compose file). The server runs
-    # as uid 1001 — these host dirs MUST be owned by 1001:1001 or key/data
-    # writes fail. See the migration note at the top of this file.
+      SIGN_KEY_DIR: /app/server/keys
+      PDF_CONCURRENCY: ${PDF_CONCURRENCY:-2}
+      TRUST_PROXY: 1
     volumes:
-      - ./data/keys:/app/keys
-      - ./data/store:/app/data
-    networks:
-      - traefik
-    labels:
-      - traefik.enable=true
-      # Watchtower auto-updates this container when a new image is pushed.
-      - com.centurylinklabs.watchtower.enable=true
-      - traefik.http.routers.api.rule=Host(`api.${DOMAIN}`)
-      - traefik.http.routers.api.entrypoints=websecure
-      - traefik.http.routers.api.tls.certresolver=le
-      - traefik.http.services.api.loadbalancer.server.port=3001
-      - traefik.http.routers.api.middlewares=api-headers@docker
-      # Hardening headers — duplicates of helmet for defence in depth.
-      - traefik.http.middlewares.api-headers.headers.frameDeny=true
-      - traefik.http.middlewares.api-headers.headers.contentTypeNosniff=true
-      - traefik.http.middlewares.api-headers.headers.referrerPolicy=no-referrer
-      - traefik.http.middlewares.api-headers.headers.stsSeconds=31536000
-      - traefik.http.middlewares.api-headers.headers.stsIncludeSubdomains=true
-
+      - opencv-keys:/app/server/keys
+    expose:
+      - '3001'
   client:
     build:
-      context: ./client
-      args:
-        VITE_API_URL: https://api.${DOMAIN:-cveaver.com}
-        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
-    image: ghcr.io/tomasneto404/cveaver-client:latest
-    container_name: cveaver-client
+      context: .
+      dockerfile: client/Dockerfile
     restart: unless-stopped
+    ports:
+      - '${WEB_PORT:-8080}:8080'
     depends_on:
       server:
         condition: service_healthy
-    networks:
-      - traefik
-    labels:
-      - traefik.enable=true
-      # Watchtower auto-updates this container when a new image is pushed.
-      - com.centurylinklabs.watchtower.enable=true
-      # Root domain
-      - traefik.http.routers.web.rule=Host(`${DOMAIN}`)
-      - traefik.http.routers.web.entrypoints=websecure
-      - traefik.http.routers.web.tls.certresolver=le
-      - traefik.http.services.web.loadbalancer.server.port=8080
-      # www → root permanent redirect (shares the `web` service)
-      - traefik.http.routers.www.rule=Host(`www.${DOMAIN}`)
-      - traefik.http.routers.www.entrypoints=websecure
-      - traefik.http.routers.www.tls.certresolver=le
-      - traefik.http.routers.www.service=web
-      - traefik.http.routers.www.middlewares=www-redirect@docker
-      - traefik.http.middlewares.www-redirect.redirectregex.regex=^https://www\.(.*)
-      - traefik.http.middlewares.www-redirect.redirectregex.replacement=https://$$1
-      - traefik.http.middlewares.www-redirect.redirectregex.permanent=true
-
-  # Auto-deploy: polls GHCR and updates only the labelled app containers
-  # (server + client) when a new :latest image is pushed by CI. Infra
-  # (traefik, dockerproxy) is left pinned. For private images, run
-  # `docker login ghcr.io` on the host first so the mounted config has creds.
-  watchtower:
-    # nickfedor/watchtower is the actively-maintained fork; the original
-    # containrrr/watchtower image is effectively unmaintained and broke.
-    image: nickfedor/watchtower
-    container_name: watchtower
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ${DOCKER_CONFIG_PATH:-/root/.docker/config.json}:/config.json:ro
-    command: --interval ${WATCHTOWER_INTERVAL:-300} --cleanup --label-enable
-
-networks:
-  traefik:
-    name: traefik
-    driver: bridge
+volumes:
+  opencv-keys:

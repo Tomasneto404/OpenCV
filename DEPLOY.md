@@ -1,143 +1,61 @@
-# Deploy — CVeaver
+# Executar OpenCV com Docker
 
-Production stack: **Traefik** (TLS + routing) + **server** (`api.${DOMAIN}`) +
-**client** (`${DOMAIN}`), all in `docker-compose.yml`. Self-contained — no
-external reverse proxy needed.
-
-A tiny `dockerproxy` service (nginx, `deploy/docker-proxy.conf`) sits between
-Traefik and the Docker socket: it rewrites the Docker API version so Traefik's
-older client works against modern daemons (Engine 29+ rejects API < 1.40). It
-starts automatically — no daemon-side change required.
-
-## 1. VPS
-
-- Recommended: **Hetzner CX22** (2 vCPU, 4 GB RAM), EU region for PT latency.
-  The PDF renderer is `@react-pdf/renderer` (no headless browser), so it's
-  light; 4 GB is comfortable with `PDF_CONCURRENCY=4`.
-- OS: Ubuntu 24.04. Install Docker Engine + the compose plugin.
-- Open ports **80** and **443** (Let's Encrypt TLS-ALPN-01 needs 443).
-
-## 2. DNS
-
-Point these A-records at the VPS IP:
-
-| Host | Serves |
-|------|--------|
-| `cveaver.com` | client |
-| `www.cveaver.com` | 301 → root |
-| `api.cveaver.com` | server (API + Stripe webhook) |
-| `traefik.cveaver.com` | dashboard (optional, basic-auth) |
-
-## 3. Configure
+A stack contém dois serviços: `client` (nginx, porta pública 8080) e `server` (API interna, porta 3001). Não precisa de serviços de pagamento ou email.
 
 ```sh
-git clone <repo> && cd easyCV
-cp .env.example .env
-# Fill: DOMAIN, ACME_EMAIL, STRIPE_SECRET_KEY, VITE_STRIPE_PUBLISHABLE_KEY,
-#       STRIPE_WEBHOOK_SECRET, RESEND_API_KEY, RESEND_FROM, TRAEFIK_DASHBOARD_AUTH
-```
-
-Leave `STRIPE_PAYMENT_METHODS` **empty** to use Dynamic Payment Methods (Stripe
-shows everything enabled in the Dashboard: card + Apple/Google Pay +
-Multibanco/MB WAY).
-
-## 4. Launch
-
-```sh
+docker compose config -q
 docker compose up -d --build
+docker compose logs -f
 ```
 
-Traefik issues Let's Encrypt certs automatically on first request. Verify:
+Abre http://localhost:8080. `WEB_PORT` altera a porta pública. Para publicar na Internet, coloca a porta do cliente atrás do teu reverse proxy com HTTPS. O browser utiliza `/api` na mesma origem, sem domínios codificados na aplicação.
+
+O compose atual é autónomo: não inicia o antigo Traefik, proxy Docker ou Watchtower. Não contém configuração DNS e não altera um domínio existente. As GitHub Actions constroem imagens `opencv-client` e `opencv-server`; o compose local constrói diretamente o código.
+
+## Migrar uma instalação anterior
+
+1. Faz backup das chaves e dos dados existentes antes de substituir serviços.
+2. Mantém `aes.key`, `ed25519.private.pem` e `ed25519.public.pem` no diretório usado pela API. Podes usar um bind mount para o diretório anterior em vez do volume novo `opencv-keys`.
+3. Se usavas `PAYLOAD_AES_KEY_B64`, continua a disponibilizar exatamente a mesma chave ao servidor. Sem ela, os PDFs anteriores não podem ser reabertos.
+4. Remove as configurações antigas de pagamento, envio de email e notificações de vendas. Não são lidas pela aplicação.
+5. Os ficheiros antigos de rascunhos e reclamações não são carregados nem eliminados automaticamente. Trata a retenção desses dados separadamente.
+6. Verifica a exportação e reimportação de um PDF antes de encaminhar tráfego para a nova aplicação.
+
+Não uses `docker compose down -v` se quiseres preservar as chaves. O JSON editável exportado pelo utilizador permanece independente das chaves da instalação.
+
+## Verificar
 
 ```sh
-curl -s https://api.cveaver.com/health     # → {"ok":true} (or 200)
-# open https://cveaver.com in a browser
+curl http://localhost:8080/healthz
+curl http://localhost:8080/api/health
 ```
 
-## 5. Stripe (live)
+Os builds usam o contexto da raiz do repositório porque cliente e servidor partilham os tipos e a validação em `shared/`.
 
-Account activation reviews the **public website** (what you sell, price, terms,
-support) — already covered by the landing page, FAQ, /terms and /support. You
-do **not** need live keys for the website review; the URL just has to be live.
+## Imagens publicadas no GitHub
 
-After the account is activated:
+Em cada push para `main` (ou execução manual da CI nessa branch), o GitHub Actions valida o código, executa os testes unitários e testa os browsers desktop/mobile contra Docker. Só depois publica ambas as imagens no GitHub Container Registry, para `linux/amd64` e `linux/arm64`:
 
-1. Switch to live keys: `STRIPE_SECRET_KEY=sk_live_…`
-   (and `VITE_STRIPE_PUBLISHABLE_KEY=pk_live_…` if/when used client-side).
-2. Enable payment methods in **live mode** (Settings → Payment methods):
-   card, Multibanco, MB WAY (if available), Apple/Google Pay.
-3. Create the webhook → **`https://api.cveaver.com/webhook/stripe`**, events:
-   `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
-   `checkout.session.async_payment_failed`. Paste its `whsec_…` into
-   `STRIPE_WEBHOOK_SECRET`.
-4. Turn off **Beta** (two flags, kept in sync):
-   - server: `BETA_MODE=false` in `.env` (re-enables PDF generation), and
-   - client: `BETA_PAYMENTS = false` in `client/src/App.tsx` (removes the
-     Beta badge/banner and re-enables the pay button).
+- `ghcr.io/tomasneto404/opencv-client:latest`
+- `ghcr.io/tomasneto404/opencv-server:latest`
 
-   While beta is on, PDF generation is fully disabled — `/create-checkout-session`,
-   `/pdf`, `/fulfill` and webhook delivery all refuse, so no CV can be obtained.
-   See also `.claude/REVERT_BEFORE_PROD.md` for the remaining test-code cleanup.
-5. `docker compose up -d --build` to apply.
+Cada imagem recebe também uma tag com o SHA completo do commit. Para uma versão fixa e consistente entre os dois serviços, define `IMAGE_TAG` com esse SHA. O workflow usa `GITHUB_TOKEN` com `packages: write`, sem precisar de um PAT guardado nos secrets. O namespace é obtido automaticamente do proprietário do repositório.
 
-## 6. Backups — critical
-
-The **`cveaver-keys`** volume holds the AES + Ed25519 keys. Losing it makes
-every previously generated PDF impossible to decode in the update flow.
+Para executar as imagens publicadas, sem construir no servidor:
 
 ```sh
-# Example: nightly backup of the keys volume
-docker run --rm -v cveaver-keys:/keys -v "$PWD/backups":/out alpine \
-  tar czf /out/cveaver-keys-$(date +%F).tgz -C /keys .
+docker compose -f docker-compose.ghcr.yml config -q
+docker compose -f docker-compose.ghcr.yml pull
+docker compose -f docker-compose.ghcr.yml up -d --wait
 ```
 
-`cveaver-data` holds draft CVs (24 h TTL) + complaints — less critical but
-worth including.
+Se os packages estiverem privados, autentica o host no GHCR com um token que tenha `read:packages`, usando `docker login ghcr.io --username Tomasneto404 --password-stdin`. Alternativamente, torna os dois packages públicos nas definições do GitHub. Não coloques tokens no compose nem no repositório.
 
-## 7. Verification checklist (production)
+Ambos os ficheiros compose usam o mesmo nome de projeto e volume de chaves. Usa apenas um deles de cada vez para a mesma instalação. Numa migração, preserva as chaves antes de substituir os serviços.
 
-- [ ] `https://cveaver.com` and `https://api.cveaver.com/health` over valid TLS
-- [ ] Card payment → PDF emailed on return + downloadable
-- [ ] Webhook deliveries show `200` in the Stripe Dashboard
-- [ ] Multibanco → "pending" screen; PDF arrives by email after confirmation
-- [ ] `POST /dev/pdf` → 404 (disabled by `NODE_ENV=production`)
-- [ ] No duplicate emails (webhook + /fulfill share the `delivered` guard)
-
-## 8. CI/CD
-
-**CI** (`.github/workflows/ci.yml`, on push + PR): client typecheck+build,
-server tests (Vitest), `docker compose config`, and a gitleaks secret scan.
-
-**Release** (`.github/workflows/release.yml`, on push to `main`): builds and
-pushes `ghcr.io/tomasneto404/cveaver-{server,client}:latest` (+ `:<sha>`) to
-GitHub Container Registry. No building on the VPS.
-
-**Auto-deploy** (Watchtower, in the compose): polls GHCR every 5 min and
-updates the `server` + `client` containers when a new `:latest` is pushed.
-Infra (traefik, dockerproxy) stays pinned.
-
-### One-time setup
-
-1. **GitHub repo variable** — Settings → Secrets and variables → Actions →
-   *Variables*: add `VITE_STRIPE_PUBLISHABLE_KEY` (the `pk_test_…`, later
-   `pk_live_…`). It's baked into the client image at build time.
-2. **GHCR images are private** (private repo). On the VPS, log in so both the
-   manual pull and Watchtower can read them:
-   ```sh
-   # PAT with read:packages scope
-   echo "$GHCR_PAT" | docker login ghcr.io -u tomasneto404 --password-stdin
-   ```
-   Watchtower mounts `/root/.docker/config.json` for these credentials
-   (override the path with `DOCKER_CONFIG_PATH` in `.env` if not root).
-
-### Deploy on the VPS
+Para validar localmente o mesmo fluxo usado na CI:
 
 ```sh
-git pull                       # picks up compose / config changes
-docker compose pull            # fetch the latest images from GHCR
-docker compose up -d           # recreate changed containers (no --build)
+docker compose up -d --build --wait
+E2E_BASE_URL=http://localhost:8080 npm run test:e2e
 ```
-
-After this, pushes to `main` redeploy automatically via Watchtower — no manual
-step needed. (Before the first CI run, the GHCR images don't exist yet; until
-then you can still `docker compose up -d --build` to build locally.)

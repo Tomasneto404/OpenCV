@@ -1,16 +1,5 @@
-interface Props {
-  value: string;
-  onChange: (next: string) => void;
-}
-
-export function SummarySection({ value, onChange }: Props) {
-  return (
-    <div>
-      <label className="label">Resumo profissional</label>
-      <textarea className="field" rows={5}
-        placeholder="2-4 linhas. Quem és, o que fazes melhor, que valor entregas."
-        value={value} onChange={(e) => onChange(e.target.value)} />
-      <p className="text-xs text-white/40 mt-1">Sugestão: contextualiza experiência + área de força + objetivo.</p>
-    </div>
-  );
+import { useFormCopy } from '../../i18n/forms';
+export function SummarySection({ value, onChange }: { value: string; onChange: (value:string) => void }) {
+  const c=useFormCopy();
+  return <div><label className="label" htmlFor="cv-summary">{c.summary}</label><textarea id="cv-summary" className="field" rows={8} maxLength={4096} placeholder={c.summaryHint} value={value} onChange={e=>onChange(e.target.value)} /><p className="summary-hint">{c.summaryHint}</p></div>;
 }

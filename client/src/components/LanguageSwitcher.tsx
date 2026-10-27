@@ -79,15 +79,23 @@ export function LanguageSwitcher() {
  * Minimal SVG flag set. Designed to be visually distinct at 20×14 px.
  * Not pixel-perfect heraldry — good enough for a UI chip.
  */
-function Flag({ code, className }: { code: Locale; className?: string }) {
+export function Flag({ code, className }: { code: Locale; className?: string }) {
   switch (code) {
     case 'pt':
       return (
         <svg viewBox="0 0 30 20" className={className} aria-hidden="true">
           <rect width="12" height="20" fill="#006600"/>
           <rect x="12" width="18" height="20" fill="#FF0000"/>
-          <circle cx="12" cy="10" r="3.5" fill="#FFCC00" stroke="#000" strokeWidth="0.6"/>
-          <circle cx="12" cy="10" r="1.8" fill="#0033A0"/>
+          <g fill="none" stroke="#FFCC00" strokeWidth="0.45">
+            <circle cx="12" cy="10" r="4"/>
+            <ellipse cx="12" cy="10" rx="1.8" ry="4"/>
+            <ellipse cx="12" cy="10" rx="4" ry="1.5"/>
+            <path d="M8.5 8l7 4M8.5 12l7-4"/>
+          </g>
+          <path d="M9.5 7h5v4a2.5 2.5 0 0 1-5 0Z" fill="#fff" stroke="#C8102E" strokeWidth="0.8"/>
+          <g fill="#0033A0">
+            <path d="M11.6 7.7h.8v.7a.4.4 0 0 1-.8 0ZM10.4 9.2h.8v.7a.4.4 0 0 1-.8 0ZM11.6 9.2h.8v.7a.4.4 0 0 1-.8 0ZM12.8 9.2h.8v.7a.4.4 0 0 1-.8 0ZM11.6 10.8h.8v.7a.4.4 0 0 1-.8 0Z"/>
+          </g>
         </svg>
       );
     case 'en':

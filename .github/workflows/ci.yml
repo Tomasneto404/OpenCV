@@ -42,7 +42,7 @@ jobs:
       - run: docker compose -f compose.yaml config -q
       - run: docker compose -f docker-compose.yml config -q
       - run: docker compose -f docker-compose.yml -p opencv-ci up -d --build --wait --wait-timeout 120
-      - name: Test desktop and mobile through nginx and the real API
+      - name: Test desktop and mobile against the single container
         run: npm run test:e2e
         env:
           E2E_BASE_URL: http://localhost:8080

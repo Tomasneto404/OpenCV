@@ -6,7 +6,6 @@ import { normalizeCV } from '../../../shared/normalizeCV';
 export interface LoadedConfig {
   cv: CVData;
   source: 'json' | 'pdf';
-  verified?: boolean;
 }
 
 export type ConfigLoadErrorCode = 'bad-json' | 'bad-pdf' | 'no-payload' | 'wrong-version' | 'unknown-type';
@@ -32,7 +31,7 @@ export async function loadConfigFromFile(file: File): Promise<LoadedConfig> {
     catch { throw new ConfigLoadError('bad-json', 'JSON inválido.'); }
     const cv = normalizeCV(parsed);
     if (!cv) throw new ConfigLoadError('wrong-version', 'Versão de configuração não suportada.');
-    return { cv, source: 'json', verified: false };
+    return { cv, source: 'json' };
   }
 
   if (isPdf) {
@@ -47,15 +46,17 @@ export async function loadConfigFromFile(file: File): Promise<LoadedConfig> {
     } catch {
       throw new ConfigLoadError('bad-pdf', 'Não consegui ler o PDF.');
     }
-    if (res.status === 422) throw new ConfigLoadError('no-payload', 'Este PDF não é reconhecido.');
+    if (res.status === 422) {
+      const error = await res.json().catch(() => ({}));
+      throw new ConfigLoadError('no-payload', typeof error.error === 'string' ? error.error : 'Este PDF não contém dados editáveis OpenCV.');
+    }
     if (!res.ok) throw new ConfigLoadError('bad-pdf', `Servidor devolveu ${res.status}.`);
-    const body = await res.json() as { cv: unknown; verified?: boolean; prevPayloadB64?: string };
+    const body = await res.json() as { cv: unknown };
     const cv = normalizeCV(body.cv);
     if (!cv) throw new ConfigLoadError('wrong-version', 'Configuração não suportada.');
     return {
       cv,
       source: 'pdf',
-      verified: Boolean(body.verified),
     };
   }
 

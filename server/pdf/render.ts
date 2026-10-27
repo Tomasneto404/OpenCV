@@ -6,8 +6,7 @@
  *   2. Load that PDF into pdf-lib
  *   3. Append each certificate either as 1:1 copies (framed === false) or
  *      inside a template-coherent frame (framed === true / undefined).
- *   4. Encrypt the canonical payload (cv + meta + internal signature) and
- *      attach as opencv.dat — opaque to anyone who opens the PDF.
+ *   4. Attach the editable CV as portable JSON, without keys or signatures.
  *   5. Set producer/author/title/keywords metadata
  *   6. Return the final bytes as a Buffer
  *
@@ -21,22 +20,16 @@
 import { renderToBuffer } from '@react-pdf/renderer';
 import { PDFDocument, StandardFonts, rgb, type RGB, type PDFEmbeddedPage, type PDFFont, type PDFPage } from 'pdf-lib';
 import { PdfDocument } from './document.js';
-import { encryptPayload } from '../crypto.js';
-import type { CVData, CertificateItem, SignatureEnvelope, PublicKeyInfo, CVMeta, EmbedPayloadV2, TemplateId } from '../types.js';
+import { createRequire } from 'node:module';
+import type { CVData, CertificateItem, TemplateId } from '../types.js';
 
-const APP_VERSION = '0.6.0';
-const ATTACHMENT_NAME = 'opencv.dat';
+const APP_VERSION: string = createRequire(import.meta.url)('../package.json').version;
+const ATTACHMENT_NAME = 'opencv.json';
 
 /* A4 dimensions in PDF points (1/72 in). */
 const A4 = { width: 595.28, height: 841.89 } as const;
 
-export interface RenderOptions {
-  signature?: SignatureEnvelope;
-  publicKey?: PublicKeyInfo;
-  meta: CVMeta;
-}
-
-export async function renderPdf(cv: CVData, opts: RenderOptions): Promise<Buffer> {
+export async function renderPdf(cv: CVData): Promise<Buffer> {
   const baseBuffer = await renderToBuffer(PdfDocument({ cv }));
   const doc = await PDFDocument.load(baseBuffer);
 
@@ -69,20 +62,9 @@ export async function renderPdf(cv: CVData, opts: RenderOptions): Promise<Buffer
     }
   }
 
-  const payload: EmbedPayloadV2 = {
-    v: 2,
-    app: 'OpenCV',
-    appVersion: APP_VERSION,
-    cv,
-    meta: opts.meta,
-    ...(opts.signature ? { signature: opts.signature } : {}),
-    ...(opts.publicKey ? { publicKey: opts.publicKey } : {}),
-  };
-  const cipherBytes = encryptPayload(payload);
-
-  await doc.attach(cipherBytes, ATTACHMENT_NAME, {
-    mimeType: 'application/octet-stream',
-    description: 'Internal data',
+  await doc.attach(Buffer.from(JSON.stringify(cv), 'utf8'), ATTACHMENT_NAME, {
+    mimeType: 'application/json',
+    description: 'Editable OpenCV data',
     creationDate: new Date(),
     modificationDate: new Date(),
   });

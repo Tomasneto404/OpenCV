@@ -117,3 +117,13 @@ test('developer credits link to GitHub and Konami opens outside inputs', async (
   for (const key of ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a']) await page.keyboard.press(key);
   await expect(dialog).not.toBeVisible();
 });
+
+test('API rejects PDFs without editable data and exposes no signing endpoint', async ({ request }) => {
+  const health = await request.get('/api/health');
+  expect(health.ok()).toBe(true);
+  expect(await health.json()).toEqual({ ok: true, service: 'opencv' });
+  const missing = await request.get('/api/public-key');
+  expect(missing.status()).toBe(404);
+  const invalid = await request.post('/api/decode-pdf', { headers: { 'Content-Type': 'application/pdf' }, data: Buffer.from('invalid PDF') });
+  expect(invalid.status()).toBe(422);
+});

@@ -4,4 +4,4 @@ A aplicação foi convertida para um editor gratuito. A anterior lista de passos
 
 Não reintroduzir gates de pagamento, envio de emails ou flags de beta: a exportação pública `POST /pdf` é o comportamento pretendido, tanto em dev como em produção.
 
-Consultar [README.md](../README.md) e [DEPLOY.md](../DEPLOY.md) para arranque, verificação e migração de chaves.
+Consultar [README.md](../README.md) e [DEPLOY.md](../DEPLOY.md) para arranque, verificação e migração de PDFs antigos.

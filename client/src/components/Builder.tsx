@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { CVData } from '../types';
 import { PersonalSection } from './Form/PersonalSection';
 import { SummarySection } from './Form/SummarySection';
@@ -21,13 +21,14 @@ import { useT } from '../i18n';
 import { useCopy } from '../i18n/workspace';
 import { TEMPLATES } from '../templates';
 interface Props {
+  accountAction?: ReactNode; accountPanel?: ReactNode; saveLabel?: string; draftHint?: string;
   cv: CVData; onLoadConfig: (cv: CVData) => void; onChange: (next: CVData) => void; onBack: () => void;
   onExport: () => void; exporting: boolean; onUndo: () => void; onRedo: () => void; onClear: () => void;
   canUndo: boolean; canRedo: boolean; saving: boolean; saveError: boolean; onLoadSample: () => void;
 }
 const sections: SectionKey[] = ['personal', 'summary', 'experience', 'education', 'skills', 'languages', 'projects', 'certificates'];
 const icons = ['◉', '≡', '▣', '◇', '✧', '◎', '▧', '▤'];
-export function Builder({ cv, onLoadConfig, onChange, onBack, onExport, exporting, onUndo, onRedo, onClear, canUndo, canRedo, saving, saveError, onLoadSample }: Props) {
+export function Builder({ accountAction, accountPanel, saveLabel, draftHint, cv, onLoadConfig, onChange, onBack, onExport, exporting, onUndo, onRedo, onClear, canUndo, canRedo, saving, saveError, onLoadSample }: Props) {
   const [active, setActive] = useState<SectionKey>('personal');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [zoom, setZoom] = useState(.7);
@@ -60,15 +61,16 @@ export function Builder({ cv, onLoadConfig, onChange, onBack, onExport, exportin
   const downloadButton = <button className="btn-primary" disabled={exporting || !cv.personal.fullName.trim()} onClick={onExport} title={!cv.personal.fullName.trim() ? c.nameHint : undefined}>{exporting ? <span className="spinner"/> : <span>↓</span>}{exporting ? c.exporting : c.export}</button>;
   return <div className="builder-shell">
     <header className="editor-nav"><div className="editor-brand"><button className="icon-button" onClick={onBack} aria-label={c.back}>←</button><BrandMark withWordmark size={30} /><span className="nav-divider"/><span className="editor-document-name">{cv.personal.fullName || c.editor}</span></div>
-      <div className="editor-actions"><span className={`save-status ${saveError ? 'error' : ''}`} role="status"><span className="status-dot"/>{saveError ? '!' : saving ? c.saving : c.saved}</span><ThemeToggle /><LanguageSwitcher /><div className="desktop-export">{downloadButton}</div></div>
+      <div className="editor-actions"><span className={`save-status ${saveError ? 'error' : ''}`} role="status"><span className="status-dot"/>{saveError ? '!' : saving ? c.saving : saveLabel || c.saved}</span><ThemeToggle /><LanguageSwitcher />{accountAction}<div className="desktop-export">{downloadButton}</div></div>
     </header>
     <div className="editor-layout">
       <aside className="section-sidebar"><div className="sidebar-heading"><p className="eyebrow">{c.content}</p><span>{filled}/{sections.length}</span></div><div className="progress-track"><span style={{ width: `${filled / sections.length * 100}%` }}/></div>
         <nav className="section-navigation" aria-label={c.content}>{sections.map((key, i) => <button key={key} onClick={() => setActive(key)} className={active === key ? 'active' : ''} aria-current={active === key ? 'step' : undefined}><span className="section-icon">{icons[i]}</span><span>{t(`builder.sections.${key}`)}</span><span className={`section-state ${sectionStatus(cv,key).state === 'filled' ? 'filled' : ''}`}>{sectionStatus(cv,key).state === 'filled' ? '✓' : String(i+1).padStart(2,'0')}</span></button>)}
         <button className={`design-nav ${active === 'template' ? 'active' : ''}`} onClick={() => setActive('template')}><span className="section-icon">▦</span><span>{c.design}</span><span>↗</span></button></nav>
-        <div className="sidebar-bottom"><p>{c.localHint}</p><button className="btn-ghost" onClick={() => downloadConfig(cv, `${slugify(cv.personal.fullName)}-opencv.json`)}>↧ {c.backup}</button></div>
+        <div className="sidebar-bottom"><p>{draftHint || c.localHint}</p><button className="btn-ghost" onClick={() => downloadConfig(cv, `${slugify(cv.personal.fullName)}-opencv.json`)}>↧ {c.backup}</button></div>
       </aside>
       <main className="form-pane" ref={formRef}><div className="form-heading"><div><p className="eyebrow">{active === 'template' ? c.design : `0${index + 1} / 08`}</p><h1>{t(`builder.sections.${active}`)}</h1></div><div className="history-actions"><button type="button" className="btn-ghost editor-reset" onClick={handleRestart}><span aria-hidden="true">↺</span>{t('builder.actions.clear')}</button><button className="icon-button" onClick={onUndo} disabled={!canUndo} aria-label={t('builder.actions.undo')} title={t('builder.actions.undo')}>↶</button><button className="icon-button" onClick={onRedo} disabled={!canRedo} aria-label={t('builder.actions.redo')} title={t('builder.actions.redo')}>↷</button></div></div>
+        {accountPanel}
         <UploadCV hasDraft={!isCvEmpty(cv)} onLoad={next => {
           onLoadConfig(next);
           setActive('personal');

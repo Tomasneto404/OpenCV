@@ -11,13 +11,14 @@ function loadDraft(): CVData {
   } catch { /* An invalid or unavailable saved draft starts a clean editor. */ }
   return emptyCV();
 }
-export function useCV() {
-  const [history, dispatch] = useReducer(historyReducer, undefined, () => initialHistory(loadDraft()));
+export function useCV({ persist: persistDraft = true }: { persist?: boolean } = {}) {
+  const [history, dispatch] = useReducer(historyReducer, undefined, () => initialHistory(persistDraft ? loadDraft() : emptyCV()));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const commitTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
+    if (!persistDraft) return;
     setSaving(true);
     const persist = () => {
       try {
@@ -35,7 +36,7 @@ export function useCV() {
       window.removeEventListener('pagehide', persist);
       document.removeEventListener('visibilitychange', hidden);
     };
-  }, [history.present]);
+  }, [history.present, persistDraft]);
 
   const cancelCommit = useCallback(() => {
     window.clearTimeout(commitTimer.current);
@@ -51,9 +52,10 @@ export function useCV() {
   const redo = useCallback(() => { cancelCommit(); dispatch({ type: 'redo' }); }, [cancelCommit]);
   const load = useCallback((cv: CVData) => { cancelCommit(); dispatch({ type: 'load', cv }); }, [cancelCommit]);
   const clear = useCallback(() => { cancelCommit(); dispatch({ type: 'clear', cv: emptyCV() }); }, [cancelCommit]);
+  const initialize = useCallback((cv: CVData) => { cancelCommit(); dispatch({ type: 'reset', cv }); }, [cancelCommit]);
   const hardReset = useCallback(() => { cancelCommit(); dispatch({ type: 'reset', cv: emptyCV() }); }, [cancelCommit]);
   return {
-    cv: history.present, replace, load, undo, redo, clear, hardReset,
+    cv: history.present, replace, load, initialize, undo, redo, clear, hardReset,
     canUndo: history.past.length > 0 || hasPendingEdit(history),
     canRedo: history.future.length > 0,
     saving, saveError,

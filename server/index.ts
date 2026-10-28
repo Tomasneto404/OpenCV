@@ -7,6 +7,8 @@ import pLimit from 'p-limit';
 import './env.js';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
+import { AccountStore } from './accounts/store';
+import { createAccountRouter } from './accounts/router';
 import { renderPdf } from './pdf/render.ts';
 import { readCVFromPdf, LegacyEncryptedPdfError } from './pdf/read.ts';
 import { validateCV, safeFilename, safeErrorMessage } from './security.ts';
@@ -26,6 +28,18 @@ app.use(helmet({
 }));
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
 const api = express.Router();
+const accountStore = new AccountStore(process.env.DATABASE_PATH || fileURLToPath(new URL('./data/opencv.sqlite', import.meta.url)));
+const publicOrigin = new URL(process.env.APP_URL || (process.env.NODE_ENV === 'production' ? 'http://localhost:8080' : 'http://localhost:5173')).origin;
+const oidcConfigured = process.env.OIDC_ISSUER && process.env.OIDC_CLIENT_ID && process.env.OIDC_CLIENT_SECRET;
+api.use(createAccountRouter({
+  store: accountStore,
+  origin: publicOrigin,
+  oidc: oidcConfigured ? {
+    issuer: process.env.OIDC_ISSUER!, clientId: process.env.OIDC_CLIENT_ID!, clientSecret: process.env.OIDC_CLIENT_SECRET!,
+    label: process.env.OIDC_LABEL || 'SSO',
+    allowHttp: process.env.NODE_ENV !== 'production' && process.env.OIDC_ALLOW_HTTP === 'true',
+  } : undefined,
+}));
 api.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 const limiter = (max: number) => rateLimit({ windowMs: 60_000, max, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiados pedidos. Tenta novamente dentro de um minuto.' } });
 const concurrency = Number(process.env.PDF_CONCURRENCY ?? 2);
@@ -67,13 +81,13 @@ if (staticDir) {
     setHeaders: (res, path) => { if (path.endsWith('.mjs')) res.type('application/javascript'); },
   }));
   app.use(express.static(directory, { maxAge: 0 }));
-  app.get(['/', '/builder', '/privacy', '/help'], (_req, res) => {
+  app.get(['/', '/builder', '/builder/:id', '/login', '/account', '/privacy', '/help'], (_req, res) => {
     res.set('Cache-Control', 'no-store').sendFile(resolve(directory, 'index.html'));
   });
 }
 app.use((err: Error & { status?: number }, _req: Request, res: Response, _next: NextFunction) => {
-  const status = err.status === 413 ? 413 : err.status === 404 ? 404 : 400;
-  res.status(status).json({ error: status === 413 ? 'O ficheiro é demasiado grande.' : 'Pedido inválido.' });
+  const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 500;
+  res.status(status).json({ error: status === 413 ? 'O ficheiro é demasiado grande.' : status === 500 ? 'server_error' : 'Pedido inválido.' });
 });
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT || 3001);

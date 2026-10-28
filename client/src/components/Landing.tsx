@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { CVData, TemplateId } from '../types';
 import { useCopy } from '../i18n/workspace';
 import { UploadCV } from './UploadCV';
@@ -8,14 +8,14 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { galleryOrder, TemplateMiniature, templateCategories } from './TemplatePicker';
 import { TEMPLATES } from '../templates';
 import { DEVELOPER_GITHUB_URL } from '../utils/developer';
-interface Props { onNew: (id?: TemplateId) => void; onResume: () => void; hasDraft: boolean; onSample: () => void; onLoadConfig: (cv: CVData) => void; onNavigate: (path: string) => void; }
-export function Landing({ onNew, onResume, hasDraft, onSample, onLoadConfig, onNavigate }: Props) {
+interface Props { accountAction?: ReactNode; onNew: (id?: TemplateId) => void; onResume: () => void; hasDraft: boolean; onSample: () => void; onLoadConfig: (cv: CVData) => void; onNavigate: (path: string) => void; }
+export function Landing({ accountAction, onNew, onResume, hasDraft, onSample, onLoadConfig, onNavigate }: Props) {
   const c = useCopy();
   const [filter, setFilter] = useState<'all' | 'clean' | 'expressive' | 'formal'>('all');
   return <div className="landing">
     <header className="site-nav"><a href="/" aria-label="OpenCV"><BrandMark withWordmark size={34} /></a>
       <nav className="site-links"><a href="#templates">{c.templates}</a><a href="#how-it-works">{c.how}</a></nav>
-      <div className="nav-actions"><ThemeToggle /><LanguageSwitcher /><button className="btn-primary nav-start" onClick={() => hasDraft ? onResume() : onNew()}>{hasDraft ? c.resume : c.start}<span>↗</span></button></div>
+      <div className="nav-actions"><ThemeToggle /><LanguageSwitcher />{accountAction}<button className="btn-primary nav-start" onClick={() => hasDraft ? onResume() : onNew()}>{hasDraft ? c.resume : c.start}<span>↗</span></button></div>
     </header>
     <main>
       <section className="hero page-width">

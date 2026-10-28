@@ -9,13 +9,13 @@ RUN npm run build
 
 FROM node:22-alpine
 WORKDIR /app/server
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080 STATIC_DIR=/app/client/dist
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080 STATIC_DIR=/app/client/dist DATABASE_PATH=/app/data/opencv.sqlite
 COPY server/package.json server/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 COPY server/ ./
 COPY shared/ /app/shared/
 COPY --from=client-build /app/client/dist /app/client/dist
-RUN apk add --no-cache tini
+RUN apk add --no-cache tini && mkdir -p /app/data && chown node:node /app/data
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 CMD node -e "require('http').get('http://127.0.0.1:8080/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"

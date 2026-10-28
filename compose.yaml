@@ -8,9 +8,18 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    volumes:
+      - opencv-data:/app/data
     environment:
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_LABEL: ${OIDC_LABEL:-SSO}
       PDF_CONCURRENCY: ${PDF_CONCURRENCY:-2}
       # Set to 1 only when all traffic passes through one trusted reverse proxy.
       TRUST_PROXY: ${TRUST_PROXY:-0}
     ports:
       - '${WEB_PORT:-8080}:8080'
+volumes:
+  opencv-data:

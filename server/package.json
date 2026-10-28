@@ -17,6 +17,7 @@
     "express": "^4.19.2",
     "express-rate-limit": "^7.4.0",
     "helmet": "^8.0.0",
+    "openid-client": "^6.8.8",
     "p-limit": "^6.1.0",
     "pdf-lib": "^1.17.1",
     "react": "^19.2.6",
@@ -29,5 +30,8 @@
     "@types/react": "^19.2.14",
     "typescript": "~5.6.0",
     "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   }
 }

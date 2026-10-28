@@ -104,7 +104,8 @@ test('long preview scrolls to its final page after editing', async ({ page }, te
 
 test('developer credits link to GitHub and Konami opens outside inputs', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'Developed with care by Tomás Neto' })).toHaveAttribute('href', 'https://github.com/Tomasneto404');
+  await expect(page.locator('.site-footer').getByRole('link', { name: 'Tomás Neto', exact: true })).toHaveAttribute('href', 'https://github.com/Tomasneto404');
+  await expect(page.locator('.footer-credit')).toHaveText('Developed with care by Tomás Neto and Maria Luísa');
   for (const key of ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a']) await page.keyboard.press(key);
   const dialog = page.getByRole('dialog', { name: 'Engineered by Tomás Neto in Portugal' });
   await expect(dialog).toBeVisible();

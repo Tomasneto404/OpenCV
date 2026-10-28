@@ -58,15 +58,13 @@ O `Dockerfile` na raiz compila o cliente numa etapa separada e inclui o resultad
 
 ## Login e SSO (OpenID Connect)
 
-O login local por email e palavra-passe funciona sem serviços externos. O editor público permanece gratuito e sem login. Para produção, define num `.env` junto ao compose:
+O login local funciona sem serviços externos e o editor público permanece gratuito. A primeira conta criada é administradora; numa atualização com contas existentes, a mais antiga recebe esse papel. Define `APP_URL` no `.env` junto ao compose:
 
 ```dotenv
 APP_URL=https://cv.example.com
-OIDC_ISSUER=https://identity.example.com/application/o/opencv/
-OIDC_CLIENT_ID=opencv
-OIDC_CLIENT_SECRET=your-provider-client-secret
-OIDC_LABEL=Company SSO
 ```
+
+Entra em **Os meus CVs → Administração → SSO e notificações**. Preenche issuer, client ID, client secret e texto do botão, ativa o SSO e guarda. A configuração é aplicada imediatamente e persistida no volume SQLite. Se o administrador só usa SSO, ativa primeiro o login local no mesmo painel.
 
 Regista no fornecedor OIDC um cliente confidencial com:
 
@@ -77,12 +75,20 @@ Regista no fornecedor OIDC um cliente confidencial com:
 
 O issuer deve ser o URL fornecido pelo IdP, não o endereço do ecrã de login. Em Authentik, usa o issuer da aplicação; em Keycloak, o issuer do realm. Google e Microsoft podem usar o mesmo protocolo com as credenciais e issuer adequados; as políticas e configuração do fornecedor têm de permitir este cliente. Cada combinação issuer + subject corresponde a uma conta: não é feita associação automática por email. O logout termina a sessão OpenCV, não a sessão global do fornecedor.
 
-Sem todas as variáveis OIDC, o botão SSO não aparece. `APP_URL` deve coincidir com o URL usado pelo browser, incluindo a porta. HTTPS ativa cookies Secure. Só em desenvolvimento é possível usar `OIDC_ALLOW_HTTP=true` com um IdP local por HTTP. Não envies tokens ou secrets para o cliente nem os coloques no Git.
+Sem ativar e configurar SSO no painel, o botão SSO não aparece. Variáveis `OIDC_*` antigas servem apenas para importar a configuração inicial quando ainda não existe uma configuração guardada; depois, gere-a no painel. `APP_URL` deve coincidir com o URL usado pelo browser, incluindo a porta. HTTPS ativa cookies Secure. Só em desenvolvimento é possível usar `OIDC_ALLOW_HTTP=true` com um IdP local por HTTP. Não envies tokens ou secrets para o cliente nem os coloques no Git.
 
-Após alterar a configuração, executa `docker compose up -d --wait`. O servidor cria automaticamente as tabelas na primeira execução. O volume é inicializado com permissões para o utilizador `node` do container.
+Após alterar variáveis de deployment como `APP_URL`, executa `docker compose up -d --wait`. Alterações no painel não exigem reinício. O servidor cria automaticamente as tabelas na primeira execução. O volume é inicializado com permissões para o utilizador `node` do container.
+
+## Registos, convites, analytics e notificações
+
+O administrador pode desligar novos registos sem bloquear utilizadores existentes, convites válidos ou o editor público. Convites são links de utilização única, associados ao email, válidos durante 7 dias e revogáveis. Partilha-os diretamente; a aplicação não envia emails. Para aceitar por SSO, o fornecedor tem de confirmar o email (`email_verified: true`).
+
+O painel mostra contas, atividade, contagens de CVs, PDFs emitidos e visitas. Os dados de tráfego e exportações começam nesta versão; não são estimados retroativamente. Uma visita é uma sessão de browser com 30 minutos de inatividade. As datas são UTC. Não são guardados IPs, URLs, referrers ou conteúdos de CVs nos analytics. Do Not Track e Global Privacy Control desativam a contagem de visitas nesse browser.
+
+Configura Discord (webhook), Telegram (bot token e chat ID), ntfy (URL base, tópico e token opcional) ou Gotify (URL base e token de aplicação) no painel. Escolhe os eventos de cada serviço, guarda e usa **Enviar notificação de teste**. Só esse botão envia um teste real. Eventos suportados: novas contas e exportações PDF. As mensagens não incluem dados pessoais. O envio é em segundo plano, sem retries automáticos e com timeout de 8 segundos; falhas não interrompem o editor. O painel apresenta o resultado do último envio. Todos os serviços estão desligados por omissão.
 
 ## Backup e migração das contas
 
 Preserva `opencv-data` entre atualizações. Para um backup simples e consistente, para temporariamente o serviço e copia todo o diretório `/app/data` (incluindo ficheiros WAL/SHM, se existirem); depois volta a iniciar. Não copies apenas o ficheiro SQLite enquanto o serviço está a escrever. Restaura o diretório com o proprietário UID/GID 1000 antes de iniciar o container.
 
-O editor público não depende de uma sessão e os PDFs continuam portáveis sem chaves. A base de dados contém dados pessoais dos CVs guardados: protege os backups tal como o volume de produção. Para uma instalação antiga sem contas, o novo volume é criado automaticamente sem afetar os rascunhos no browser.
+O editor público não depende de uma sessão e os PDFs continuam portáveis sem chaves. A base de dados contém contas, CVs guardados, métricas e credenciais de integrações: protege os backups tal como o volume de produção. Para uma instalação antiga sem contas, o novo volume é criado automaticamente sem afetar os rascunhos no browser.

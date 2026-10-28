@@ -50,7 +50,16 @@ Keep your saved CVs together, reopen them for editing, or continue using the pub
 
 </details>
 
-Screenshots show the running application in English using the built-in sample CV.
+<details>
+<summary>Administration, SSO and notifications</summary>
+
+![OpenCV administration overview with registered users, active accounts, exports and visits](docs/screenshots/administration.png)
+
+![OpenCV administration settings for OpenID Connect, Discord, Telegram, ntfy and Gotify](docs/screenshots/integrations.png)
+
+</details>
+
+Screenshots show the running application in English using sample CVs and disposable test accounts.
 
 ## Quick start with Docker
 
@@ -109,11 +118,26 @@ The public editor, all templates, JSON import, and PDF downloads stay free and a
 - Account CVs use explicit **Save changes** and remain separate from the public browser draft. Unsaved edits prompt before leaving; conflicting updates from another tab are rejected rather than overwritten.
 - Sign out without leaving private CV contents in the public draft. Change your local password from **My CVs** to invalidate other sessions.
 
-Set `APP_URL` to the application's public URL. For SSO, configure `OIDC_ISSUER`, `OIDC_CLIENT_ID`, and `OIDC_CLIENT_SECRET`, with redirect URI `<APP_URL>/api/auth/sso/callback`. `OIDC_LABEL` controls the button label. Without those credentials, local login and the public editor work normally and the SSO button is hidden.
+Set `APP_URL` to the application's public URL. Sign in as the administrator, open **Administration → SSO and notifications**, enter the OIDC issuer, client ID, client secret and button label, then enable SSO and save. Register the callback URL shown in the panel with your provider. Settings apply immediately and persist in SQLite. Existing `OIDC_*` environment variables are imported only when no SSO configuration has been saved; subsequent changes belong in the panel. Local login and the public editor remain available when SSO is disabled.
 
 SSO uses OpenID Connect discovery, authorization code flow, PKCE, state, nonce, and signed ID-token validation. Accounts are identified by issuer and subject; a matching email never automatically links an SSO identity to a local account. This supports standard OIDC providers such as Authentik and Keycloak; see [DEPLOY.md](DEPLOY.md) for configuration.
 
 Local passwords are hashed with scrypt, and sessions use HttpOnly, SameSite cookies (Secure when `APP_URL` uses HTTPS). There is no email service or password-reset email: keep local credentials safe, or use your identity provider's recovery flow for SSO accounts.
+
+## Administration
+
+The **first account created is the administrator**, including when created through SSO. When upgrading an installation with existing accounts, the oldest account becomes administrator once. No default credentials are created. Open **My CVs → Administration** or `/admin`.
+
+- **Registration control:** open or close email registration and the creation of new SSO accounts. Existing users can still sign in, valid invitations still work, and the public editor stays available.
+- **Invitations:** generate an email-bound, single-use link valid for seven days, share it yourself, and revoke it when needed. No email service is required. Invitation secrets are stored hashed and shown only when created. SSO redemption requires the provider to verify the matching email.
+- **User directory:** search and paginate registered users, with their role, sign-in method, registration date, last activity and saved CV count. Administrators cannot open other users' CV contents.
+- **Analytics:** registered and active accounts, current saved CVs, successful PDF exports split by guest/member, visits, page views, and a selectable daily chart with a data table for the last 30 days. Export and traffic metrics start when this feature is installed; historical exports cannot be recovered. Each successful export counts, including repeated downloads. A visit is a browser session with a 30-minute inactivity timeout, not a unique person. Active accounts use authenticated activity. Dates are UTC.
+- **SSO:** configure OpenID Connect directly in the panel. An administrator using only SSO must enable local sign-in in the panel before changing the provider, preserving access if the provider is disabled or replaced.
+- **Notifications:** configure Discord webhooks, Telegram bot/chat, ntfy server/topic, and Gotify server/application token. Choose new-account and/or PDF-export events per service. Save, then use **Send test notification** to check delivery and inspect the last delivery result. Notifications are disabled by default and contain no account or CV details. They are sent in the background with an eight-second timeout, no automatic retry, and a bounded number of concurrent sends; interrupted or failed messages are not replayed.
+
+Secrets and webhook URLs are hidden from configuration responses; blank secret fields keep the saved values. Integration credentials are stored in the server database, so protect the persistent volume and its backups. Notification destinations are configured by the administrator; self-hosted ntfy and Gotify can use internal HTTP addresses, while Discord and Telegram use HTTPS. Visit analytics respect Do Not Track and Global Privacy Control; they do not store IP addresses, raw URLs, referrers or CV contents. The first-party visit cookie expires after 30 minutes of inactivity.
+
+Provider documentation: [Discord webhooks](https://docs.discord.com/developers/resources/webhook#execute-webhook), [Telegram Bot API](https://core.telegram.org/bots/api#sendmessage), [ntfy publishing](https://docs.ntfy.sh/publish/), and [Gotify messages](https://gotify.net/docs/pushmsg).
 
 ## Features
 
@@ -131,7 +155,7 @@ Drafts are stored in your browser's `localStorage`. If saving fails, the editor 
 
 ## Data and editable PDFs
 
-Public imports and PDF exports are processed in memory without storing those drafts or generated PDFs on disk. CVs explicitly saved to an account are stored in SQLite with their owner and can be deleted from the library. The application has no payment, email, sales notification, or analytics integrations.
+Public imports and PDF exports are processed in memory without storing those drafts or generated PDFs on disk. CVs explicitly saved to an account are stored in SQLite with their owner and can be deleted from the library. The application has no payment or email service. Local aggregate analytics and optional administrator-configured notifications are described above; CV contents are never included in either.
 
 Every exported PDF includes an **`opencv.json` attachment** containing the editable CV data. It is neither encrypted nor signed: you can reimport it into any OpenCV installation, without keys or access to the server that created it. Anyone who receives the PDF can also read its embedded data.
 
@@ -147,24 +171,29 @@ The HTML preview and PDF export use different renderers, so pagination may vary.
 npm run build                   # Client build and TypeScript checks
 npm test                        # Validation, portability, templates, and PDF round trips
 npx playwright install chromium # Install the browser before the first E2E run
-npm run test:e2e                 # Desktop and mobile browser tests
+# Run E2E against a disposable Docker deployment as shown below
 ```
 
-Unit tests cover all nine templates, long CVs, editing after reimport, reading PDFs in a separate process without keys, multipage certificates, rejection of invalid data, account ownership, password and session handling, concurrent edit conflicts, database persistence, and SSO success/failure paths with a local test identity provider.
+Unit tests cover admin bootstrap/migration, authorization, registration controls, invitation expiry/revocation/redemption, aggregate analytics, saved integration secrets, notification payloads/failures, all nine templates, long CVs, editing after reimport, reading PDFs in a separate process without keys, multipage certificates, rejection of invalid data, account ownership, password and session handling, concurrent edit conflicts, database persistence, and SSO success/failure paths with a local test identity provider.
 
-Browser tests start development servers when needed. They cover JSON/PDF upload, invalid files, replacement and cancellation, draft persistence, reset and undo, long-preview scrolling, the developer Easter egg, account registration/login/logout, saved CV editing, and separation from public drafts.
+Browser tests require a disposable database so the first account can exercise administrator setup. They cover administration, invitations, registration settings, integration forms, consistent button heights, JSON/PDF upload, invalid files, replacement and cancellation, draft persistence, reset and undo, long-preview scrolling, the developer Easter egg, account registration/login/logout, saved CV editing, and separation from public drafts.
 
-To test a running Docker deployment:
+To test a disposable Docker deployment (do not point these tests at production):
 
 ```sh
-E2E_BASE_URL=http://localhost:8080 npm run test:e2e
+WEB_PORT=8083 APP_URL=http://localhost:8083 docker compose -f docker-compose.yml -p opencv-e2e up -d --build --wait
+E2E_BASE_URL=http://localhost:8083 npm run test:e2e
+# Remove only this disposable test stack and its test database:
+docker compose -f docker-compose.yml -p opencv-e2e down -v
 ```
+
+Use a fresh test volume for the first run. The E2E suite creates a test administrator and test accounts; it never requires access to real notification providers.
 
 [GitHub Actions](https://github.com/Tomasneto404/OpenCV/actions) runs the browser tests against the actual Docker container. Images are published to `tomasneto26/opencv` only after the build, type checks, tests, and secret scan pass.
 
 ## API
 
-The application uses the `/api` prefix in production and through the Vite development proxy. The standalone development API also accepts the same routes without that prefix.
+The application uses the `/api` prefix in production and through the Vite development proxy. Legacy health, PDF and account routes also work without that prefix. Admin and analytics APIs always use `/api`, leaving `/admin` for the browser interface.
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
@@ -173,6 +202,8 @@ The application uses the `/api` prefix in production and through the Vite develo
 | POST | `/api/decode-pdf` | Accepts an `application/pdf` body and returns validated CV data |
 
 Account endpoints include `/api/auth/session`, `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/password`, and `/api/auth/sso`. `/api/cvs` supports authenticated listing/creation, while `/api/cvs/:id` supports reading, updating, and deleting an owned CV. Updates and deletes require the current `revision` to detect conflicts. Mutating account requests require `X-OpenCV-Request: 1` and a matching Origin when supplied; the UI also sends `X-OpenCV-User` to detect account switches in other tabs.
+
+Admin-only endpoints include `/api/admin/overview`, `/api/admin/users`, `/api/admin/settings`, `/api/admin/invitations`, and `/api/admin/integrations`. Public page-view signals use `/api/analytics/page`; analytics reports require administrator authorization.
 
 The API limits request rates and concurrent PDF generation. The request body limit is 80 MB to accommodate base64-encoded attachments.
 
@@ -191,7 +222,7 @@ The API limits request rates and concurrent PDF generation. The request body lim
 
 ## Credits
 
-Developed with care by [Tomás Neto](https://github.com/Tomasneto404).
+Developed with care by [Tomás Neto](https://github.com/Tomasneto404) and Maria Luísa.
 
 Enter the Konami code outside a text field to reveal the developer Easter egg: **↑ ↑ ↓ ↓ ← → ← → B A**.
 

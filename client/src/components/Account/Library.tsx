@@ -8,9 +8,11 @@ import { LanguageSwitcher } from '../LanguageSwitcher';
 import { ThemeToggle } from '../ThemeToggle';
 import { useAuth } from './Auth';
 import { useToast } from '../Toast';
+import { useAdminCopy } from '../../i18n/admin';
 
 export function Library({ onNavigate }: { onNavigate: (path: string) => void }) {
   const auth = useAuth(); const c = useAccountCopy(); const { locale } = useT(); const toast = useToast();
+  const a = useAdminCopy();
   const [cvs, setCVs] = useState<CVSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -30,7 +32,7 @@ export function Library({ onNavigate }: { onNavigate: (path: string) => void }) 
       try { const saved = await accountRequest<CVSummary>('/cvs', 'POST', { title: c.untitled, cv: { ...emptyCV(), locale } }); onNavigate(`/builder/${saved.id}`); }
       catch (cause) { setError(accountErrorMessage(cause, c)); } finally { setBusy(false); }
     }}>＋ {c.newCV}</button></section>
-    <button className="btn-link library-public" onClick={() => onNavigate('/builder')}>{c.publicEditor} →</button>
+    <div className="library-links"><button className="btn-link library-public" onClick={() => onNavigate('/builder')}>{c.publicEditor} →</button>{auth.user?.role === 'admin' && <button className="btn-ghost" onClick={() => onNavigate('/admin')}>{a.admin} ↗</button>}</div>
     {error && <div className="notice error" role="alert">{error}<button className="btn-link" onClick={() => setReload(n => n + 1)}>{c.retry}</button></div>}
     {loading ? <p role="status">{c.loading}</p> : cvs.length === 0 ? <div className="library-empty"><span aria-hidden="true">▤</span><h2>{c.empty}</h2><p>{c.emptyHint}</p></div> : <div className="library-grid">{cvs.map(cv => <article className="saved-cv-card" key={cv.id}>
       <div className="saved-cv-icon" aria-hidden="true">▤</div><h2>{cv.title}</h2><time dateTime={cv.updatedAt}>{new Date(cv.updatedAt).toLocaleString(locale)}</time>

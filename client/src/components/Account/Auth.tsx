@@ -8,7 +8,7 @@ interface AuthState extends Session {
 }
 const Context = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session>({ user: null, sso: null });
+  const [session, setSession] = useState<Session>({ user: null, sso: null, registrationEnabled: true });
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     let active = true;

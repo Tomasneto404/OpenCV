@@ -1,7 +1,7 @@
 import { API_URL } from './api';
 import type { CVData } from './types';
-export interface AccountUser { id: string; name: string; email: string | null; local: boolean }
-export interface Session { user: AccountUser | null; sso: { label: string } | null }
+export interface AccountUser { id: string; name: string; email: string | null; local: boolean; role: 'admin' | 'user' }
+export interface Session { user: AccountUser | null; sso: { label: string } | null; registrationEnabled: boolean }
 export interface CVSummary { id: string; title: string; revision: number; updatedAt: string }
 export interface SavedCV extends CVSummary { cv: CVData }
 export class AccountError extends Error {

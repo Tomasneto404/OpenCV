@@ -32,6 +32,6 @@ export function Landing({ accountAction, onNew, onResume, hasDraft, onSample, on
       </div></section>
       <section id="how-it-works" className="how-section page-width"><p className="eyebrow">01 → 02 → 03</p><h2>{c.stepTitle}</h2><div className="steps-grid">{c.steps.map((s, i) => <div key={s}><span className="step-number">0{i+1}</span><h3>{s}</h3><p>{c.stepBodies[i]}</p></div>)}</div></section>
     </main>
-    <footer className="site-footer page-width"><div><BrandMark withWordmark /><p>{c.footer}</p></div><a className="footer-credit" href={DEVELOPER_GITHUB_URL} target="_blank" rel="noopener noreferrer">Developed with care by <strong>Tomás Neto</strong></a><button className="btn-link" onClick={() => onNavigate('/privacy')}>{c.privacy} ↗</button><span>© {new Date().getFullYear()} OpenCV</span></footer>
+    <footer className="site-footer page-width"><div><BrandMark withWordmark /><p>{c.footer}</p></div><span className="footer-credit">Developed with care by <a href={DEVELOPER_GITHUB_URL} target="_blank" rel="noopener noreferrer"><strong>Tomás Neto</strong></a> and <strong>Maria Luísa</strong></span><button className="btn-link" onClick={() => onNavigate('/privacy')}>{c.privacy} ↗</button><span>© {new Date().getFullYear()} OpenCV</span></footer>
   </div>;
 }

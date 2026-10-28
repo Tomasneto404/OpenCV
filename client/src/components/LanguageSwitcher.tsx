@@ -35,7 +35,7 @@ export function LanguageSwitcher() {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={t('language.label')}
-        className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-glass-bg)] hover:bg-[color:var(--color-field-hover)] text-sm text-[color:var(--color-ink)] transition"
+        className="btn-ghost items-center gap-2 px-2.5 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-glass-bg)] hover:bg-[color:var(--color-field-hover)] text-sm text-[color:var(--color-ink)] transition"
       >
         <Flag code={locale} className="h-3.5 w-5 rounded-[2px] shrink-0" />
         <span className="hidden sm:inline">{current?.native}</span>

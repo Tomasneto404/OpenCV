@@ -41,7 +41,7 @@ const document = { title: 'Design CV', cv: emptyCV() };
 describe('optional accounts and private CV ownership', () => {
   it('registers, persists a hashed session, signs out and signs in without exposing credentials', async () => {
     const { origin, store } = await setup(); const browser = client(origin);
-    expect(await (await browser.request('/auth/session')).json()).toEqual({ user: null, sso: null });
+    expect(await (await browser.request('/auth/session')).json()).toEqual({ user: null, sso: null, registrationEnabled: true });
     const response = await browser.request('/auth/register', 'POST', registration());
     expect(response.status).toBe(201);
     const { user } = await response.json(); expect(user.name).toBe('Ana'); expect(user.password_hash).toBeUndefined();

@@ -17,13 +17,24 @@ import { SavedEditor } from './components/Account/SavedEditor';
 import { SavePublicCV } from './components/Account/SavePanel';
 import { useAccountCopy } from './i18n/accounts';
 import { isCvEmpty } from './utils/completion';
+import { Admin } from './components/Account/Admin';
+import { useAdminCopy } from './i18n/admin';
+import { accountRequest } from './accounts';
 
 export function App() {
   const state = useCV();
   const auth = useAuth(); const accountCopy = useAccountCopy();
+  const adminCopy = useAdminCopy();
   const dirty = useRef(false);
   const guard = useCallback((value: boolean) => { dirty.current = value; }, []);
   const [path, setPath] = useState(window.location.pathname);
+  const trackedPath = useRef('');
+  useEffect(() => {
+    if (trackedPath.current === path || navigator.doNotTrack === '1' || (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl) return;
+    trackedPath.current = path;
+    // Only a page-view signal: no path, invitation secret or CV data leaves the browser.
+    void accountRequest('/analytics/page', 'POST').catch(() => {});
+  }, [path]);
   const [exporting, setExporting] = useState(false);
   const { locale } = useT(); const c = useCopy(); const toast = useToast();
   const navigate = useCallback((next: string) => {
@@ -57,9 +68,10 @@ export function App() {
   };
   const accountAction = <button className="btn-ghost account-nav-button" onClick={() => navigate(auth.user ? '/account' : '/login')}>{auth.user ? accountCopy.library : accountCopy.login}</button>;
   const privateId = path.match(/^\/builder\/([a-zA-Z0-9-]+)$/)?.[1];
-  if (path === '/login' || path === '/account' || privateId) {
+  if (path === '/login' || path === '/account' || path === '/admin' || privateId) {
     if (auth.loading) return <main className="account-page"><p role="status">{accountCopy.loading}</p></main>;
     if (!auth.user) return <Login onNavigate={navigate} />;
+    if (path === '/admin') return auth.user.role === 'admin' ? <Admin onNavigate={navigate} /> : <main className="account-page"><p className="notice" role="alert">{adminCopy.forbidden}</p><button className="btn-ghost" onClick={() => navigate('/account')}>{accountCopy.library}</button></main>;
     if (privateId) return <SavedEditor key={`${auth.user.id}:${privateId}`} id={privateId} onNavigate={navigate} guard={guard} />;
     return <Library key={auth.user.id} onNavigate={navigate} />;
   }

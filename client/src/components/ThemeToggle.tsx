@@ -31,7 +31,7 @@ export function ThemeToggle() {
       onClick={() => setTheme(next)}
       title={next === 'dark' ? 'Dark mode' : 'Light mode'}
       aria-label={`Switch to ${next} mode`}
-      className="inline-flex items-center justify-center h-8 w-8 rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-glass-bg)] hover:bg-[color:var(--color-field-hover)] transition text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)]"
+      className="icon-button items-center justify-center rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-glass-bg)] hover:bg-[color:var(--color-field-hover)] transition text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)]"
     >
       {theme === 'dark' ? (
         // sun icon

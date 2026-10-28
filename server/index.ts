@@ -70,8 +70,8 @@ api.post('/decode-pdf', limiter(15), express.raw({ type: 'application/pdf', limi
 });
 app.use('/api', api);
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Endpoint não encontrado.' }));
-// Keep the development API URLs and Vite proxy compatible.
-app.use('/', api);
+// Preserve legacy PDF/account API URLs without shadowing the /admin SPA page.
+app.use((req, res, next) => /^\/(health|pdf|decode-pdf|auth|cvs)(\/|$)/.test(req.path) ? api(req, res, next) : next());
 app.get('/healthz', (_req, res) => res.type('text').send('ok'));
 const staticDir = process.env.STATIC_DIR;
 if (staticDir) {
@@ -81,7 +81,7 @@ if (staticDir) {
     setHeaders: (res, path) => { if (path.endsWith('.mjs')) res.type('application/javascript'); },
   }));
   app.use(express.static(directory, { maxAge: 0 }));
-  app.get(['/', '/builder', '/builder/:id', '/login', '/account', '/privacy', '/help'], (_req, res) => {
+  app.get(['/', '/builder', '/builder/:id', '/login', '/account', '/admin', '/privacy', '/help'], (_req, res) => {
     res.set('Cache-Control', 'no-store').sendFile(resolve(directory, 'index.html'));
   });
 }
